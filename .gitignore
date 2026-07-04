@@ -8,7 +8,6 @@ __pycache__/
 .spyproject/
 .vscode/
 
-database.db
 *.db-journal
 
 uploads/
