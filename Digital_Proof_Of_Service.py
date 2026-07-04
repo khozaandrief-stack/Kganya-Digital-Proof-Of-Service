@@ -120,19 +120,23 @@ print(f"MAIL_USE_TLS={app.config['MAIL_USE_TLS']}")
 
 def verify_smtp():
     try:
-        msg = Message(
-            subject="SMTP Startup Test",
-            recipients=[SMTP_USERNAME],
-            body="SMTP connection successful."
-        )
+        print("Connecting to Gmail SMTP...")
 
-        mail.send(msg)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30)
+        server.set_debuglevel(1)
 
-        print("SMTP OK")
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+
+        print("SMTP LOGIN SUCCESS")
+
+        server.quit()
 
     except Exception as e:
-        print(f"SMTP FAILED: {e}")
-        
+        print(f"SMTP FAILED: {type(e).__name__}: {e}")
 
 mail = Mail(app)
 
