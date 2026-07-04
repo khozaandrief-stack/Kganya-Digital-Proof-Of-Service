@@ -143,8 +143,8 @@ print("MAIL_USE_TLS=", app.config["MAIL_USE_TLS"])
 print("MAIL_USE_SSL=", app.config["MAIL_USE_SSL"])
 print("==================================\n")
 
-#with app.app_context():
-#    verify_smtp()
+with app.app_context():
+    verify_smtp()
 
 
 
