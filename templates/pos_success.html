@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}POS Submitted — KGANYA{% endblock %}
+
+
+
+{% block content %}
+<div class="container">
+    <h1>✅ POS Submitted Successfully!</h1>
+    <h3>POS #{{ pos_number }} has been saved.</h3>
+
+    <div class="summary" style="margin: 30px 0;">
+        <div class="card" style="text-align: center;">
+            <h3 style="color: lightgoldenrodyellow;">{{ total_stickers }}</h3>
+            <p style="color: white;">Total Stickers</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3 style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(total_banking) }}</h3>
+            <p style="color: white;">Total Banking</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3 style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(total_parish) }}</h3>
+            <p style="color: white;">Total Parish</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

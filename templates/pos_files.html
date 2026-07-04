@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Proof Of Service Files</title>
+
+    <style>
+
+        html {
+            min-height: 100%;
+        }
+
+        body {
+            font-family: "Century Gothic", sans-serif;
+            margin: 0;
+            padding: 20px;
+
+            background-image:
+            linear-gradient(
+                rgba(255,255,255,0.35),
+                rgba(255,255,255,0.35)
+            ),
+            url("{{ url_for('static', filename='Picture1.jpg') }}");
+
+            background-size: 100% auto;
+            background-position: center top;
+            background-repeat: repeat-y;
+            background-attachment: scroll;
+
+            min-height: 100vh;
+        }
+
+        .container {
+
+            max-width: 1200px;
+            margin: auto;
+
+            background: rgba(255,255,255,0.15);
+
+            backdrop-filter: blur(8px);
+
+            padding: 20px;
+            border-radius: 10px;
+
+            border: 1px solid rgba(255,255,255,0.3);
+
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+        }
+
+        h1,
+        h2,
+        h3 {
+
+            text-align: center;
+            color: lightgoldenrodyellow;
+            font-weight: bold;
+        }
+
+        .section-title {
+
+            background: rgba(0,0,0,0.45);
+
+            color: white;
+
+            padding: 10px;
+
+            border-radius: 5px;
+
+            margin-top: 20px;
+            margin-bottom: 20px;
+
+            text-align: center;
+
+            font-weight: bold;
+        }
+
+        table {
+
+            width: 100%;
+            border-collapse: collapse;
+
+            margin-top: 20px;
+        }
+
+        table,
+        th,
+        td {
+
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        th {
+
+            background: rgba(0,0,0,0.45);
+
+            padding: 10px;
+
+            color: lightgoldenrodyellow;
+        }
+
+        td {
+
+            padding: 10px;
+
+            text-align: center;
+
+            background: rgba(255,255,255,0.15);
+
+            color: black;
+        }
+
+        a.file-link {
+
+            text-decoration: none;
+            color: #0b3d91;
+            font-weight: bold;
+        }
+
+        a.file-link:hover {
+
+            text-decoration: underline;
+        }
+
+        button {
+
+            background-color: #1e3a5f;
+
+            color: white;
+
+            border: none;
+
+            padding: 10px 20px;
+
+            border-radius: 5px;
+
+            cursor: pointer;
+        }
+
+        button:hover {
+
+            background-color: #162b46;
+        }
+
+        .button-section {
+
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .no-files {
+
+            text-align: center;
+
+            font-weight: bold;
+
+            color: darkred;
+
+            margin-top: 20px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>KGANYA</h1>
+
+    <h2>LIGHTING THE WAY THROUGH SERVICE</h2>
+
+    <h3>Proof Of Service Files</h3>
+
+    <div class="section-title">
+
+        Available Proof Of Service Records
+
+    </div>
+
+    {% if files %}
+
+    <table>
+
+        <tr>
+
+            <th>No.</th>
+
+            <th>File Name</th>
+
+            <th>Action</th>
+
+        </tr>
+
+        {% for file in files %}
+
+        <tr>
+
+            <td>{{ loop.index }}</td>
+
+            <td>{{ file.name }}</td>
+
+            <td>
+
+                <a
+                    href="/view-pos/{{ file.name }}"
+                    class="file-link"
+                >
+                    Open File
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    {% else %}
+
+    <div class="no-files">
+
+        No Proof Of Service files found.
+
+    </div>
+
+    {% endif %}
+
+    <div class="button-section">
+
+        <button onclick="history.back()">
+
+            Back
+
+        </button>
+
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Upload POS Files - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📁 Upload Files for POS #{{ pos_number }}</h1>
+    <p class="subtitle">Upload Proof of Banking and Receipts for this POS record.</p>
+
+    <div class="upload-sections">
+        <!-- Proof of Banking Section -->
+        <div class="upload-card {% if proof_of_banking %}has-file{% endif %}">
+            <div class="upload-header">
+                <h2>🏦 Proof of Banking</h2>
+                {% if proof_of_banking %}
+                    <span class="badge uploaded">✓ Uploaded</span>
+                {% else %}
+                    <span class="badge pending">Pending</span>
+                {% endif %}
+            </div>
+
+            {% if proof_of_banking %}
+            <div class="current-file">
+                <p><strong>Current File:</strong> {{ proof_of_banking.original_filename }}</p>
+                <p><strong>Uploaded:</strong> {{ proof_of_banking.uploaded_at }}</p>
+                <p><strong>Size:</strong> {{ "%.1f"|format(proof_of_banking.file_size / 1024) }} KB</p>
+                <div class="file-actions">
+                    <a href="/uploads/{{ proof_of_banking.stored_filename }}" class="btn-view" target="_blank">👁 View</a>
+                    <a href="/uploads/{{ proof_of_banking.stored_filename }}" class="btn-download" download>⬇ Download</a>
+                </div>
+                <p class="replace-note">Upload a new file below to replace this one.</p>
+            </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data" class="upload-form">
+                <input type="hidden" name="upload_type" value="proof_of_banking">
+                <div class="form-group">
+                    <label for="file-banking">Select File:</label>
+                    <input type="file" id="file-banking" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx" required>
+                    <small>Allowed: PDF, Images, Word, Excel (Max 10MB)</small>
+                </div>
+                <button type="submit" class="btn-upload">
+                    {% if proof_of_banking %}🔄 Replace{% else %}📤 Upload{% endif %} Proof of Banking
+                </button>
+            </form>
+        </div>
+
+        <!-- Receipts Section -->
+        <div class="upload-card {% if receipts %}has-file{% endif %}">
+            <div class="upload-header">
+                <h2>🧾 Receipts</h2>
+                {% if receipts %}
+                    <span class="badge uploaded">✓ Uploaded</span>
+                {% else %}
+                    <span class="badge pending">Pending</span>
+                {% endif %}
+            </div>
+
+            {% if receipts %}
+            <div class="current-file">
+                <p><strong>Current File:</strong> {{ receipts.original_filename }}</p>
+                <p><strong>Uploaded:</strong> {{ receipts.uploaded_at }}</p>
+                <p><strong>Size:</strong> {{ "%.1f"|format(receipts.file_size / 1024) }} KB</p>
+                <div class="file-actions">
+                    <a href="/uploads/{{ receipts.stored_filename }}" class="btn-view" target="_blank">👁 View</a>
+                    <a href="/uploads/{{ receipts.stored_filename }}" class="btn-download" download>⬇ Download</a>
+                </div>
+                <p class="replace-note">Upload a new file below to replace this one.</p>
+            </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data" class="upload-form">
+                <input type="hidden" name="upload_type" value="receipts">
+                <div class="form-group">
+                    <label for="file-receipts">Select File:</label>
+                    <input type="file" id="file-receipts" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx" required>
+                    <small>Allowed: PDF, Images, Word, Excel (Max 10MB)</small>
+                </div>
+                <button type="submit" class="btn-upload">
+                    {% if receipts %}🔄 Replace{% else %}📤 Upload{% endif %} Receipts
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="actions-footer">
+        <a href="/view-pos/{{ pos_id }}" class="btn-back">← Back to POS</a>
+        <a href="/upload-history/{{ pos_id }}" class="btn-history">📜 View Upload History</a>
+    </div>
+</div>
+
+<style>
+.upload-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 30px;
+    margin: 30px 0;
+}
+.upload-card {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 15px;
+    padding: 25px;
+    transition: all 0.3s ease;
+}
+.upload-card.has-file {
+    border-color: rgba(76, 175, 80, 0.5);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.1);
+}
+.upload-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.upload-header h2 {
+    margin: 0;
+    color: lightgoldenrodyellow;
+    font-size: 1.3em;
+}
+.badge {
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.badge.uploaded {
+    background: rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+}
+.badge.pending {
+        background: linear-gradient(135deg, #1976D2, #0D47A1);
+        color: #FF5252;
+        border: 2px solid #FF5252;
+        box-shadow: 0 0 8px rgba(25, 118, 210, 0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+.current-file {
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.current-file p {
+    margin: 5px 0;
+    color: #ddd;
+}
+.file-actions {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+.file-actions a {
+    padding: 8px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+.btn-view {
+    background: #1e3a5f;
+    color: white;
+}
+.btn-view:hover {
+    background: #2a4a7a;
+}
+.btn-download {
+    background: rgba(255,255,255,0.2);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-download:hover {
+    background: rgba(255,255,255,0.3);
+}
+.replace-note {
+    color: #FF9800 !important;
+    font-style: italic;
+    font-size: 0.9em;
+    margin-top: 10px !important;
+}
+.upload-form {
+    margin-top: 15px;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: lightgoldenrodyellow;
+    font-weight: bold;
+}
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #aaa;
+    font-size: 0.8em;
+}
+.btn-upload {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #1e3a5f, #2a4a7a);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.btn-upload:hover {
+    background: linear-gradient(135deg, #2a4a7a, #3a5a8a);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.actions-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+.actions-footer a {
+    padding: 10px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.btn-back {
+    background: rgba(255,255,255,0.1);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-back:hover {
+    background: rgba(255,255,255,0.2);
+}
+.btn-history {
+    background: rgba(156, 39, 176, 0.3);
+    color: #E1BEE7;
+    border: 1px solid #9C27B0;
+}
+.btn-history:hover {
+    background: rgba(156, 39, 176, 0.5);
+}
+.subtitle {
+    text-align: center;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+@media (max-width: 768px) {
+    .upload-sections {
+        grid-template-columns: 1fr;
+    }
+    .actions-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .actions-footer a {
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}

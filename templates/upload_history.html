@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Upload History - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📜 Upload History</h1>
+    <h2>POS #{{ pos_record.pos_number }} — {{ pos_record.church_name or pos_record.created_by }}</h2>
+    <p class="subtitle">Complete history of all file uploads (including replaced files).</p>
+
+    {% if history %}
+    <div class="history-table-wrapper">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Type</th>
+                    <th>Filename</th>
+                    <th>Status</th>
+                    <th>Uploaded</th>
+                    <th>Size</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for upload in history %}
+                <tr class="{% if upload.is_replaced %}replaced{% else %}current{% endif %}">
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        {% if upload.upload_type == 'proof_of_banking' %}
+                            🏦 Banking
+                        {% else %}
+                            🧾 Receipts
+                        {% endif %}
+                    </td>
+                    <td class="filename">{{ upload.original_filename }}</td>
+                    <td>
+                        {% if upload.is_replaced %}
+                            <span class="status-badge replaced">🔄 Replaced</span>
+                            <small>by {{ upload.replaced_by_filename or 'new file' }}</small>
+                        {% else %}
+                            <span class="status-badge current">✓ Current</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ upload.uploaded_at }}</td>
+                    <td>{{ "%.1f"|format(upload.file_size / 1024) }} KB</td>
+                    <td>
+                        {% if not upload.is_replaced %}
+                        <a href="/uploads/{{ upload.stored_filename }}" class="btn-view" target="_blank">👁 View</a>
+                        <a href="/uploads/{{ upload.stored_filename }}" class="btn-download" download>⬇ Download</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>📭 No uploads found for this POS record.</p>
+    </div>
+    {% endif %}
+
+    <div class="actions-footer">
+        <a href="/view-pos/{{ pos_record.id }}" class="btn-back">← Back to POS</a>
+        {% if not is_admin %}
+        <a href="/upload-pos-files/{{ pos_record.id }}" class="btn-upload">📤 Upload Files</a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.history-table-wrapper {
+    margin: 30px 0;
+    overflow-x: auto;
+}
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.history-table th {
+    background: rgba(0,0,0,0.4);
+    color: lightgoldenrodyellow;
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+.history-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: #ddd;
+}
+.history-table tr.current {
+    background: rgba(76, 175, 80, 0.05);
+}
+.history-table tr.replaced {
+    background: rgba(255, 152, 0, 0.05);
+    opacity: 0.8;
+}
+.history-table tr:hover {
+    background: rgba(255,255,255,0.1);
+}
+.filename {
+    font-family: monospace;
+    font-size: 0.9em;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.status-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    display: inline-block;
+}
+.status-badge.current {
+    background: rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+}
+.status-badge.replaced {
+    background: rgba(255, 152, 0, 0.3);
+    color: #FF9800;
+    border: 1px solid #FF9800;
+}
+.status-badge small {
+    display: block;
+    font-weight: normal;
+    font-size: 0.75em;
+    margin-top: 2px;
+    color: #aaa;
+}
+.btn-view, .btn-download {
+    padding: 5px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.85em;
+    margin-right: 5px;
+    transition: all 0.2s;
+}
+.btn-view {
+    background: #1e3a5f;
+    color: white;
+}
+.btn-download {
+    background: rgba(255,255,255,0.2);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.text-muted {
+    color: #888;
+}
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #aaa;
+    font-size: 1.1em;
+}
+.actions-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+.actions-footer a {
+    padding: 10px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.btn-back {
+    background: rgba(255,255,255,0.1);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-upload {
+    background: linear-gradient(135deg, #1e3a5f, #2a4a7a);
+    color: white;
+}
+.subtitle {
+    text-align: center;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+h2 {
+    text-align: center;
+    color: lightgoldenrodyellow;
+    font-size: 1.2em;
+    margin-top: -10px;
+    margin-bottom: 20px;
+}
+@media (max-width: 768px) {
+    .history-table th, .history-table td {
+        padding: 8px;
+        font-size: 0.85em;
+    }
+    .actions-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
+{% endblock %}

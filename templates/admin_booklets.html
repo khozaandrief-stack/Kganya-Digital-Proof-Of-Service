@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Receipt Booklets — KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📚 Receipt Booklet Management</h1>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/admin" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">← Back to Admin</a>
+        <a href="/admin/products" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">🏷️ Manage Products</a>
+        <a href="/superadmin" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">⚙️ Superadmin</a>
+        <a href="/admin/deleted-booklets" style="color: lightgoldenrodyellow; text-decoration: none; font-weight: bold;">🗑️ Deleted Booklets</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">➕ Allocate New Booklet to User</div>
+    <div class="login-card" style="max-width: 900px; margin: 20px auto 30px auto;">
+        <form method="POST" action="/admin/booklets/allocate">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="form-group">
+                    <label for="user_id">User</label>
+                    <select name="user_id" id="user_id" class="form-control" required>
+                        <option value="">Select User...</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }} ({{ user.church_branch_name or 'No branch' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="product_name">Product</label>
+                    <select name="product_name" id="product_name" class="form-control" required>
+                        <option value="">Select Product...</option>
+                        {% for product in products %}
+                            <option value="{{ product.name }}">{{ product.name }} (R{{ "%.2f"|format(product.price) }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="booklet_number">Booklet Number</label>
+                    <input type="text" name="booklet_number" id="booklet_number" class="form-control" placeholder="e.g., 007, 008" required>
+                </div>
+                <div class="form-group">
+                    <label for="receipt_type">Receipt Type</label>
+                    <input type="text" name="receipt_type" id="receipt_type" class="form-control" placeholder="e.g., AH, DH" required>
+                </div>
+                <div class="form-group">
+                    <label for="receipt_from">Receipt From</label>
+                    <input type="number" name="receipt_from" id="receipt_from" class="form-control" placeholder="0" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="receipt_to">Receipt To</label>
+                    <input type="number" name="receipt_to" id="receipt_to" class="form-control" placeholder="9999" min="0" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 15px; width: auto; padding: 10px 30px;">Allocate Booklet</button>
+        </form>
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">📊 Receipts Statistics</div>
+    <div class="login-card" style="max-width: 1200px; margin: 20px auto 30px auto;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            <!-- Total Receipts per Product -->
+            <div>
+                <h4 style="color: lightgoldenrodyellow; text-align: center; margin-bottom: 15px;">📊 Total Receipts</h4>
+                <div id="total-receipts-chart"></div>
+            </div>
+            <!-- Sold Receipts per Product -->
+            <div>
+                <h4 style="color: lightgoldenrodyellow; text-align: center; margin-bottom: 15px;">💰 Sold Receipts</h4>
+                <div id="sold-receipts-chart"></div>
+            </div>
+            <!-- Cancelled Receipts per Product -->
+            <div>
+                <h4 style="color: lightgoldenrodyellow; text-align: center; margin-bottom: 15px;">❌ Cancelled Receipts</h4>
+                <div id="cancelled-receipts-chart"></div>
+            </div>
+            <!-- Remaining Receipts per Product -->
+            <div>
+                <h4 style="color: lightgoldenrodyellow; text-align: center; margin-bottom: 15px;">📦 Remaining Receipts</h4>
+                <div id="remaining-receipts-chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">📋 All Allocated Booklets</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Product</th>
+                    <th>Booklet #</th>
+                    <th>Type</th>
+                    <th>Range</th>
+                    <th>Total</th>
+                    <th>Next Expected</th>
+                    <th>Status</th>
+                    <th>Price (at alloc)</th>
+                    <th>Allocated By</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booklet in booklets %}
+                <tr>
+                    <td>{{ booklet.id }}</td>
+                    <td>{{ booklet.username }}<br><small>{{ booklet.church_branch_name or '' }}</small></td>
+                    <td>{{ booklet.product_name }}</td>
+                    <td>{{ booklet.booklet_number }}</td>
+                    <td>{{ booklet.receipt_type }}</td>
+                    <td>{{ booklet.receipt_from }} → {{ booklet.receipt_to }}</td>
+                    <td>{{ booklet.total_receipts }}</td>
+                    <td>{{ booklet.display_next_expected or booklet.next_expected_receipt }}</td>
+                    <td>
+                        {% if booklet.is_active == 1 and booklet.is_completed == 0 %}
+                            <span style="color: #28a745; font-weight: bold;">ACTIVE</span>
+                        {% elif booklet.is_completed == 1 %}
+                            <span style="color: #6c757d; font-weight: bold;">COMPLETED</span>
+                        {% else %}
+                            <span style="color: #dc3545; font-weight: bold;">INACTIVE</span>
+                        {% endif %}
+                    </td>
+                    <td>R{{ "%.2f"|format(booklet.price_at_allocation) }}<br><small>Ded: R{{ "%.2f"|format(booklet.deduction_at_allocation) }}</small></td>
+                    <td>{{ booklet.allocated_by }}</td>
+                    <td>{{ booklet.created_at }}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            <a href="/admin/booklet-progress/{{ booklet.user_id }}">
+                                <button style="margin-top:0; font-size: 11px; padding: 5px 10px;">View Progress</button>
+                            </a>
+                            
+                            {% if not booklet.has_used_receipts and not booklet.has_cancelled_receipts %}
+                                <form method="POST" action="/admin/booklets/delete/{{ booklet.id }}" style="display: inline;" 
+                                      onsubmit="return confirm('Are you sure you want to delete Booklet #{{ booklet.booklet_number }} for {{ booklet.product_name }}?\n\nThis booklet has NOT been used yet and can be safely deleted.\n\nClick OK to delete, or Cancel to keep it.');">
+                                    <button type="submit" style="margin-top:0; font-size: 11px; padding: 5px 10px; background-color: #dc3545;">🗑 Delete</button>
+                                </form>
+                            {% else %}
+                                <button style="margin-top:0; font-size: 11px; padding: 5px 10px; background-color: #6c757d; cursor: not-allowed; opacity: 0.6;" 
+                                        title="Cannot delete: This booklet has {{ 'used' if booklet.has_used_receipts else '' }}{{ ' and ' if booklet.has_used_receipts and booklet.has_cancelled_receipts else '' }}{{ 'cancelled' if booklet.has_cancelled_receipts else '' }} receipts. Deletion would destroy financial records."
+                                        disabled>🗑 Delete</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="13" style="text-align: center; color: #666;">No booklets allocated yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Statistics data passed from Flask
+const statsData = {{ stats_json | safe }};
+
+function createHorizontalBarChart(containerId, data, color, labelKey, valueKey) {
+    const container = document.getElementById(containerId);
+    if (!container || !data || data.length === 0) {
+        container.innerHTML = '<p style="color: rgba(255,255,255,0.7); text-align: center;">No data available</p>';
+        return;
+    }
+    
+    const maxValue = Math.max(...data.map(d => d[valueKey]));
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+    data.forEach(item => {
+        const percentage = maxValue > 0 ? (item[valueKey] / maxValue * 100) : 0;
+        const barWidth = Math.max(percentage, 3); // Minimum 3% width for visibility
+        
+        html += `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 130px; text-align: right; color: white; font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item[labelKey]}</div>
+                <div style="flex: 1; background: rgba(255,255,255,0.15); border-radius: 8px; height: 26px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; left: 0; top: 0; width: ${barWidth}%; height: 100%; background: ${color}; border-radius: 8px;"></div>
+                    <div style="position: absolute; right: 8px; top: 0; height: 100%; display: flex; align-items: center; z-index: 2;">
+                        <span style="color: white; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${item[valueKey].toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Create charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    createHorizontalBarChart('total-receipts-chart', statsData.total, 'linear-gradient(90deg, #17a2b8, #138496)', 'product', 'count');
+    createHorizontalBarChart('sold-receipts-chart', statsData.sold, 'linear-gradient(90deg, #28a745, #1e7e34)', 'product', 'count');
+    createHorizontalBarChart('cancelled-receipts-chart', statsData.cancelled, 'linear-gradient(90deg, #dc3545, #bd2130)', 'product', 'count');
+    createHorizontalBarChart('remaining-receipts-chart', statsData.remaining, 'linear-gradient(90deg, #ffc107, #e0a800)', 'product', 'count');
+});
+</script>
+{% endblock %}

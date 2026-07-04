@@ -1,0 +1,994 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📊 Admin Submissions Tracking Dashboard</h1>
+    <p class="subtitle">Track POS Submissions and Uploads</p>
+    {% if session.role == "superadmin" %}
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/superadmin/audit-log" class="btn-action btn-view" style="font-size: 1em; padding: 10px 24px;">🛡️ View Audit Log</a>
+    </div>
+    {% endif %}
+
+    <!-- Global Search & Filters -->
+    <div class="global-filters">
+        <div class="search-box">
+            <input type="text" id="globalSearch" placeholder="🔍 Search by POS #, User, Church, or Amount..." onkeyup="filterAllTables()">
+        </div>
+        <div class="filter-group">
+            <select id="yearFilter" onchange="filterAllTables()">
+                <option value="">All Years</option>
+                {% for year in all_years %}
+                <option value="{{ year }}">{{ year }}</option>
+                {% endfor %}
+            </select>
+            <select id="monthFilter" onchange="filterAllTables()">
+                <option value="">All Months</option>
+                <option value="January">January</option>
+                <option value="February">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+                <option value="May">May</option>
+                <option value="June">June</option>
+                <option value="July">July</option>
+                <option value="August">August</option>
+                <option value="September">September</option>
+                <option value="October">October</option>
+                <option value="November">November</option>
+                <option value="December">December</option>
+            </select>
+            <select id="userFilter" onchange="filterAllTables()">
+                <option value="">All Users</option>
+                {% for user in all_users %}
+                <option value="{{ user.username }}">{{ user.username }}{% if user.church_branch_name %} ({{ user.church_branch_name }}){% endif %}</option>
+                {% endfor %}
+            </select>
+            <button class="btn-clear" onclick="clearFilters()">❌ Clear</button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card outstanding-submissions" onclick="scrollToSection('outstanding-submissions')">
+            <div class="summary-icon">⚠️</div>
+            <div class="summary-info">
+                <h3 id="count-outstanding-submissions">{{ outstanding_submissions_count }}</h3>
+                <p>Outstanding Submissions</p>
+            </div>
+        </div>
+        <div class="summary-card successful-submissions" onclick="scrollToSection('successful-submissions')">
+            <div class="summary-icon">✅</div>
+            <div class="summary-info">
+                <h3 id="count-successful-submissions">{{ successful_submissions_count }}</h3>
+                <p>Successful Submissions</p>
+            </div>
+        </div>
+        <div class="summary-card outstanding-uploads" onclick="scrollToSection('outstanding-uploads')">
+            <div class="summary-icon">📤</div>
+            <div class="summary-info">
+                <h3 id="count-outstanding-uploads">{{ outstanding_uploads_count }}</h3>
+                <p>Outstanding Uploads</p>
+            </div>
+        </div>
+        <div class="summary-card successful-uploads" onclick="scrollToSection('successful-uploads')">
+            <div class="summary-icon">📁</div>
+            <div class="summary-info">
+                <h3 id="count-successful-uploads">{{ successful_uploads_count }}</h3>
+                <p>Successful Uploads</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Submissions Grouped by Year-Month-Week -->
+    <div class="dashboard-section" id="grouped-submissions">
+        <div class="section-header">
+            <h2>📅 Submissions by Year-Month-Week</h2>
+            <div class="section-actions">
+                <button class="btn-export" onclick="exportTableToCSV('groupedTable', 'submissions_by_period.csv')">📥 Export CSV</button>
+                <button class="btn-export btn-pdf" onclick="exportToPDF('grouped-submissions', 'submissions_by_period.pdf')">📄 Export PDF</button>
+                <button class="btn-toggle" onclick="toggleSection('grouped-content')">▼ Collapse</button>
+            </div>
+        </div>
+        <div id="grouped-content">
+            {% for year, months in grouped_submissions.items() %}
+            <div class="year-group" data-year="{{ year }}">
+                <h3 class="year-header">📆 {{ year }}</h3>
+                {% for month, weeks in months.items() %}
+                <div class="month-group" data-month="{{ month }}">
+                    <h4 class="month-header">🗓 {{ month }}</h4>
+                    {% for week, submissions in weeks.items() %}
+                    <div class="week-group">
+                        <h5 class="week-header">Week {{ week }} <span class="week-count">({{ submissions|length }} submissions)</span></h5>
+                        <div class="table-wrapper">
+                            <table class="data-table grouped-table">
+                                <thead>
+                                    <tr>
+                                        <th>POS #</th>
+                                        <th>User</th>
+                                        <th>Church</th>
+                                        <th>Date Submitted</th>
+                                        <th>Total Banking</th>
+                                        <th>Total Stickers</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pos in submissions %}
+                                    <tr class="searchable-row" data-user="{{ pos.user_name }}" data-year="{{ year }}" data-month="{{ month }}">
+                                        <td>#{{ pos.pos_number }}</td>
+                                        <td>{{ pos.user_name }}</td>
+                                        <td>{{ pos.church_branch_name or pos.church_name or '—' }}</td>
+                                        <td>{{ pos.created_at }}</td>
+                                        <td>R {{ "%.2f"|format(pos.total_banking or 0) }}</td>
+                                        <td>{{ pos.total_stickers or 0 }}</td>
+                                        <td>
+                                            {% if pos.has_banking and pos.has_receipts %}
+                                                <span class="badge status-complete">✓ Complete</span>
+                                            {% elif pos.has_banking or pos.has_receipts %}
+                                                <span class="badge status-partial">⏳ Partial</span>
+                                            {% else %}
+                                                <span class="badge status-pending">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="/view-pos/{{ pos.id }}" class="btn-action btn-view">👁 View</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Section 2: Outstanding Submissions -->
+    <div class="dashboard-section" id="outstanding-submissions">
+        <div class="section-header">
+            <h2>⚠️ Outstanding Submissions</h2>
+            <div class="section-actions">
+                <span class="section-count" id="filtered-outstanding-count">{{ outstanding_submissions|length }} records</span>
+                <button class="btn-export" onclick="exportTableToCSV('outstandingSubmissionsTable', 'outstanding_submissions.csv')">📥 Export CSV</button>
+                <button class="btn-export btn-pdf" onclick="exportToPDF('outstanding-submissions', 'outstanding_submissions.pdf')">📄 Export PDF</button>
+            </div>
+        </div>
+        <p class="section-desc">POS records with no uploads yet (Proof of Banking & Receipts missing).</p>
+        <div class="table-wrapper">
+            <table class="data-table highlight-outstanding" id="outstandingSubmissionsTable">
+                <thead>
+                    <tr>
+                        <th>POS #</th>
+                        <th>User</th>
+                        <th>Church Branch</th>
+                        <th>Created Date</th>
+                        <th>Due Date (Sunday)</th>
+                        <th>Days Overdue</th>
+                        <th>Total Banking</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in outstanding_submissions %}
+                    <tr class="searchable-row" data-user="{{ pos.user_name }}" data-year="{{ pos.year }}" data-month="{{ pos.month_name }}">
+                        <td>#{{ pos.pos_number }}</td>
+                        <td>{{ pos.user_name }}</td>
+                        <td>{{ pos.church_branch_name or '—' }}</td>
+                        <td>{{ pos.created_at }}</td>
+                        <td>{{ pos.due_date }}</td>
+                        <td>
+                            {% if pos.days_overdue > 0 %}
+                                <span class="overdue-badge">{{ pos.days_overdue }} days overdue</span>
+                            {% else %}
+                                <span class="due-soon-badge">Due in {{ pos.days_until_due }} days</span>
+                            {% endif %}
+                        </td>
+                        <td>R {{ "%.2f"|format(pos.total_banking or 0) }}</td>
+                        <td>
+                            <a href="/view-pos/{{ pos.id }}" class="btn-action btn-view">👁 View</a>
+                            <a href="/upload-pos-files/{{ pos.id }}" class="btn-action btn-upload">📤 Upload</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 3: Successful Submissions -->
+    <div class="dashboard-section" id="successful-submissions">
+        <div class="section-header">
+            <h2>✅ Successful Submissions</h2>
+            <div class="section-actions">
+                <span class="section-count" id="filtered-successful-count">{{ successful_submissions|length }} records</span>
+                <button class="btn-export" onclick="exportTableToCSV('successfulSubmissionsTable', 'successful_submissions.csv')">📥 Export CSV</button>
+                <button class="btn-export btn-pdf" onclick="exportToPDF('successful-submissions', 'successful_submissions.pdf')">📄 Export PDF</button>
+            </div>
+        </div>
+        <p class="section-desc">All POS records submitted by users.</p>
+        <div class="table-wrapper">
+            <table class="data-table" id="successfulSubmissionsTable">
+                <thead>
+                    <tr>
+                        <th>POS #</th>
+                        <th>User</th>
+                        <th>Church Branch</th>
+                        <th>Submitted Date</th>
+                        <th>Total Banking</th>
+                        <th>Total Stickers</th>
+                        <th>Proof of Banking</th>
+                        <th>Receipts</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in successful_submissions %}
+                    <tr class="searchable-row" data-user="{{ pos.user_name }}" data-year="{{ pos.year }}" data-month="{{ pos.month_name }}">
+                        <td>#{{ pos.pos_number }}</td>
+                        <td>{{ pos.user_name }}</td>
+                        <td>{{ pos.church_branch_name or '—' }}</td>
+                        <td>{{ pos.created_at }}</td>
+                        <td>R {{ "%.2f"|format(pos.total_banking or 0) }}</td>
+                        <td>{{ pos.total_stickers or 0 }}</td>
+                        <td>
+                            {% if pos.has_banking %}
+                                <span class="badge status-uploaded">✓ Uploaded</span>
+                            {% else %}
+                                <span class="badge status-pending">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pos.has_receipts %}
+                                <span class="badge status-uploaded">✓ Uploaded</span>
+                            {% else %}
+                                <span class="badge status-pending">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/view-pos/{{ pos.id }}" class="btn-action btn-view">👁 View</a>
+                            <a href="/upload-pos-files/{{ pos.id }}" class="btn-action btn-upload">📤 Upload</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 4: Outstanding Uploads -->
+    <div class="dashboard-section" id="outstanding-uploads">
+        <div class="section-header">
+            <h2>📤 Outstanding Uploads</h2>
+            <div class="section-actions">
+                <span class="section-count" id="filtered-outstanding-uploads-count">{{ outstanding_uploads|length }} records</span>
+                <button class="btn-export" onclick="exportTableToCSV('outstandingUploadsTable', 'outstanding_uploads.csv')">📥 Export CSV</button>
+                <button class="btn-export btn-pdf" onclick="exportToPDF('outstanding-uploads', 'outstanding_uploads.pdf')">📄 Export PDF</button>
+            </div>
+        </div>
+        <p class="section-desc">POS records missing Proof of Banking or Receipts.</p>
+        <div class="table-wrapper">
+            <table class="data-table highlight-outstanding" id="outstandingUploadsTable">
+                <thead>
+                    <tr>
+                        <th>POS #</th>
+                        <th>User</th>
+                        <th>Church Branch</th>
+                        <th>Submitted Date</th>
+                        <th>Missing</th>
+                        <th>Days Since Submission</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in outstanding_uploads %}
+                    <tr class="searchable-row" data-user="{{ pos.user_name }}" data-year="{{ pos.year }}" data-month="{{ pos.month_name }}">
+                        <td>#{{ pos.pos_number }}</td>
+                        <td>{{ pos.user_name }}</td>
+                        <td>{{ pos.church_branch_name or '—' }}</td>
+                        <td>{{ pos.created_at }}</td>
+                        <td>
+                            {% if not pos.has_banking and not pos.has_receipts %}
+                                <span class="missing-badge">Proof of Banking & Receipts</span>
+                            {% elif not pos.has_banking %}
+                                <span class="missing-badge">Proof of Banking</span>
+                            {% elif not pos.has_receipts %}
+                                <span class="missing-badge">Receipts</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ pos.days_since_creation }} days</td>
+                        <td>
+                            <a href="/view-pos/{{ pos.id }}" class="btn-action btn-view">👁 View</a>
+                            <a href="/upload-pos-files/{{ pos.id }}" class="btn-action btn-upload">📤 Upload Now</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 5: Successful Uploads -->
+    <div class="dashboard-section" id="successful-uploads">
+        <div class="section-header">
+            <h2>📁 Successful Uploads</h2>
+            <div class="section-actions">
+                <span class="section-count" id="filtered-successful-uploads-count">{{ successful_uploads|length }} records</span>
+                <button class="btn-export" onclick="exportTableToCSV('successfulUploadsTable', 'successful_uploads.csv')">📥 Export CSV</button>
+                <button class="btn-export btn-pdf" onclick="exportToPDF('successful-uploads', 'successful_uploads.pdf')">📄 Export PDF</button>
+            </div>
+        </div>
+        <p class="section-desc">POS records with both Proof of Banking and Receipts uploaded.</p>
+        <div class="table-wrapper">
+            <table class="data-table" id="successfulUploadsTable">
+                <thead>
+                    <tr>
+                        <th>POS #</th>
+                        <th>User</th>
+                        <th>Church Branch</th>
+                        <th>Submitted Date</th>
+                        <th>Proof of Banking</th>
+                        <th>Receipts</th>
+                        <th>Fully Complete</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in successful_uploads %}
+                    <tr class="searchable-row" data-user="{{ pos.user_name }}" data-year="{{ pos.year }}" data-month="{{ pos.month_name }}">
+                        <td>#{{ pos.pos_number }}</td>
+                        <td>{{ pos.user_name }}</td>
+                        <td>{{ pos.church_branch_name or '—' }}</td>
+                        <td>{{ pos.created_at }}</td>
+                        <td>
+                            <span class="badge status-uploaded">✓ {{ pos.proof_of_banking_filename }}</span>
+                        </td>
+                        <td>
+                            <span class="badge status-uploaded">✓ {{ pos.receipts_filename }}</span>
+                        </td>
+                        <td>
+                            <span class="badge status-complete">🎉 Complete</span>
+                        </td>
+                        <td>
+                            <a href="/view-pos/{{ pos.id }}" class="btn-action btn-view">👁 View</a>
+                            <a href="/uploads/{{ pos.proof_of_banking_file }}" class="btn-action btn-download" target="_blank">🏦 Banking</a>
+                            <a href="/uploads/{{ pos.receipts_file }}" class="btn-action btn-download" target="_blank">🧾 Receipts</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ===== FILTER & SEARCH FUNCTIONS ===== */
+
+function filterAllTables() {
+    const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
+    const yearFilter = document.getElementById('yearFilter').value;
+    const monthFilter = document.getElementById('monthFilter').value;
+    const userFilter = document.getElementById('userFilter').value;
+    
+    const rows = document.querySelectorAll('.searchable-row');
+    
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const user = row.getAttribute('data-user');
+        const year = row.getAttribute('data-year');
+        const month = row.getAttribute('data-month');
+        
+        const matchesSearch = text.includes(searchTerm);
+        const matchesYear = !yearFilter || year == yearFilter;
+        const matchesMonth = !monthFilter || month === monthFilter;
+        const matchesUser = !userFilter || user === userFilter;
+        
+        if (matchesSearch && matchesYear && matchesMonth && matchesUser) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    updateFilteredCounts();
+    hideEmptyGroups();
+}
+
+function updateFilteredCounts() {
+    const sections = [
+        { id: 'outstanding-submissions', countId: 'filtered-outstanding-count' },
+        { id: 'successful-submissions', countId: 'filtered-successful-count' },
+        { id: 'outstanding-uploads', countId: 'filtered-outstanding-uploads-count' },
+        { id: 'successful-uploads', countId: 'filtered-successful-uploads-count' }
+    ];
+    
+    sections.forEach(sec => {
+        const section = document.getElementById(sec.id);
+        if (section) {
+            const visibleRows = section.querySelectorAll('.searchable-row:not([style*="display: none"])');
+            const countEl = document.getElementById(sec.countId);
+            if (countEl) countEl.textContent = visibleRows.length + ' records';
+        }
+    });
+}
+
+function hideEmptyGroups() {
+    document.querySelectorAll('.year-group').forEach(yearGroup => {
+        const visibleMonths = yearGroup.querySelectorAll('.month-group');
+        visibleMonths.forEach(monthGroup => {
+            const visibleWeeks = monthGroup.querySelectorAll('.week-group');
+            let hasVisibleRows = false;
+            visibleWeeks.forEach(weekGroup => {
+                const visibleRows = weekGroup.querySelectorAll('.searchable-row:not([style*="display: none"])');
+                if (visibleRows.length === 0) {
+                    weekGroup.style.display = 'none';
+                } else {
+                    weekGroup.style.display = '';
+                    hasVisibleRows = true;
+                }
+            });
+            monthGroup.style.display = hasVisibleRows ? '' : 'none';
+        });
+        const hasVisibleMonths = yearGroup.querySelectorAll('.month-group:not([style*="display: none"])').length > 0;
+        yearGroup.style.display = hasVisibleMonths ? '' : 'none';
+    });
+}
+
+function clearFilters() {
+    document.getElementById('globalSearch').value = '';
+    document.getElementById('yearFilter').value = '';
+    document.getElementById('monthFilter').value = '';
+    document.getElementById('userFilter').value = '';
+    filterAllTables();
+}
+
+function scrollToSection(id) {
+    document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleSection(contentId) {
+    const content = document.getElementById(contentId);
+    const btn = event.target;
+    if (content.style.display === 'none') {
+        content.style.display = '';
+        btn.textContent = '▼ Collapse';
+    } else {
+        content.style.display = 'none';
+        btn.textContent = '▶ Expand';
+    }
+}
+
+/* ===== EXPORT TO CSV ===== */
+
+function exportTableToCSV(tableId, filename) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        const visibleRows = document.querySelectorAll('#grouped-content .searchable-row:not([style*="display: none"])');
+        if (visibleRows.length === 0) {
+            alert('No data to export!');
+            return;
+        }
+        
+        let csv = [];
+        const headers = ['POS #', 'User', 'Church', 'Date Submitted', 'Total Banking', 'Total Stickers', 'Status'];
+        csv.push(headers.join(','));
+        
+        visibleRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const rowData = [
+                '"' + cells[0].innerText.replace('#', '') + '"',
+                '"' + cells[1].innerText + '"',
+                '"' + cells[2].innerText + '"',
+                '"' + cells[3].innerText + '"',
+                '"' + cells[4].innerText + '"',
+                '"' + cells[5].innerText + '"',
+                '"' + cells[6].innerText.trim() + '"'
+            ];
+            csv.push(rowData.join(','));
+        });
+        
+        downloadCSV(csv.join('\n'), filename);
+        return;
+    }
+    
+    const visibleRows = table.querySelectorAll('tbody tr:not([style*="display: none"])');
+    if (visibleRows.length === 0) {
+        alert('No data to export!');
+        return;
+    }
+    
+    let csv = [];
+    const headers = [];
+    table.querySelectorAll('thead th').forEach(th => {
+        headers.push('"' + th.innerText.replace('Actions', '').trim() + '"');
+    });
+    csv.push(headers.join(','));
+    
+    visibleRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const rowData = [];
+        cells.forEach((cell, index) => {
+            if (index < cells.length - 1) {
+                rowData.push('"' + cell.innerText.replace(/"/g, '""').trim() + '"');
+            }
+        });
+        csv.push(rowData.join(','));
+    });
+    
+    downloadCSV(csv.join('\n'), filename);
+}
+
+function downloadCSV(csvContent, filename) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/* ===== EXPORT TO PDF ===== */
+
+function exportToPDF(sectionId, filename) {
+    const section = document.getElementById(sectionId);
+    const printWindow = window.open('', '_blank');
+    
+    const styles = document.querySelectorAll('style');
+    let styleText = '';
+    styles.forEach(s => styleText += s.innerHTML);
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${filename}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; background: white; color: black; }
+                h1, h2 { color: #1e3a5f; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                th { background: #1e3a5f; color: white; }
+                tr:nth-child(even) { background: #f5f5f5; }
+                .badge { padding: 3px 10px; border-radius: 10px; font-size: 0.8em; }
+                .status-submitted { background: #dbeafe; color: #1e40af; }
+                .status-approved { background: #dcfce7; color: #166534; }
+                .status-rejected { background: #fee2e2; color: #991b1b; }
+                .status-uploaded { background: #dcfce7; color: #166534; }
+                .status-pending { background: #dbeafe; color: #1e40af; }
+                .status-complete { background: #f3e8ff; color: #6b21a8; }
+                .overdue-badge { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; }
+                .due-soon-badge { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; }
+                .missing-badge { background: #ffedd5; color: #9a3412; padding: 2px 8px; border-radius: 10px; }
+                .section-actions, .btn-action { display: none; }
+                .year-header { color: #b45309; }
+                .month-header { color: #0e7490; }
+            </style>
+        <base target="_blank">
+</head>
+        <body>
+            <h1>KGANYA - ${filename.replace('.pdf', '').replace(/_/g, ' ').toUpperCase()}</h1>
+            <p>Exported on: ${new Date().toLocaleString()}</p>
+            ${section.innerHTML}
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+}
+</script>
+
+<style>
+/* Global Filters */
+.global-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 25px 0;
+    padding: 20px;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 15px;
+    align-items: center;
+}
+.search-box {
+    flex: 1;
+    min-width: 250px;
+}
+.search-box input {
+    width: 100%;
+    padding: 12px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2);
+    color: white;
+    font-size: 1em;
+}
+.search-box input::placeholder {
+    color: #aaa;
+}
+.filter-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.filter-group select {
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2);
+    color: white;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+.filter-group select option {
+    background: #1a3a2a;
+    color: white;
+}
+.btn-clear {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+.btn-clear:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin: 25px 0;
+}
+.summary-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-radius: 15px;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+.summary-icon {
+    font-size: 2em;
+}
+.summary-info h3 {
+    margin: 0;
+    font-size: 1.8em;
+    color: lightgoldenrodyellow;
+}
+.summary-info p {
+    margin: 5px 0 0;
+    color: #ccc;
+    font-size: 0.9em;
+}
+.outstanding-submissions { border-left: 4px solid #ef4444; }
+.successful-submissions { border-left: 4px solid #22c55e; }
+.outstanding-uploads { border-left: 4px solid #f97316; }
+.successful-uploads { border-left: 4px solid #3b82f6; }
+
+/* Dashboard Sections */
+.dashboard-section {
+    margin: 40px 0;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 15px;
+    padding: 25px;
+}
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.section-header h2 {
+    margin: 0;
+    color: lightgoldenrodyellow;
+    font-size: 1.4em;
+}
+.section-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.section-count {
+    background: rgba(255,255,255,0.15);
+    color: lightgoldenrodyellow;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+.btn-export {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-export:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+.btn-pdf {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+.btn-pdf:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+.btn-toggle {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+.section-desc {
+    color: #aaa;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+
+/* Grouped Submissions */
+.year-group { margin-bottom: 30px; }
+.year-header {
+    color: #fbbf24;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+}
+.month-group {
+    margin-left: 20px;
+    margin-bottom: 20px;
+}
+.month-header {
+    color: #67e8f9;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+.week-group {
+    margin-left: 20px;
+    margin-bottom: 20px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.week-header {
+    color: #ddd;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+.week-count {
+    color: #aaa;
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+/* Tables */
+.table-wrapper {
+    overflow-x: auto;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+.data-table th {
+    background: rgba(0,0,0,0.6);
+    color: #fff8dc;
+    padding: 14px 15px;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+}
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    color: #ffffff;
+    font-weight: 500;
+    background: rgba(0,0,0,0.4);
+}
+.data-table tr:hover td {
+    background: rgba(0,0,0,0.55);
+    color: #ffffff;
+}
+.highlight-outstanding td {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ffffff;
+}
+.highlight-outstanding tr:hover td {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+.status-submitted {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid #3b82f6;
+}
+.status-approved {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid #22c55e;
+}
+.status-rejected {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid #ef4444;
+}
+.status-uploaded {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid #22c55e;
+}
+.status-pending {
+    background: #3b82f6;
+    color: #ffffff;
+    border: 1px solid #60a5fa;
+    border-radius: 50px;
+    padding: 5px 14px;
+    font-weight: 600;
+}
+.status-partial {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid #fbbf24;
+}
+.status-complete {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    border: 1px solid #a855f7;
+}
+
+/* Special Badges */
+.overdue-badge {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.due-soon-badge {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.missing-badge {
+    background: rgba(249, 115, 22, 0.2);
+    color: #fb923c;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+/* Action Buttons */
+.btn-action {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 500;
+    margin-right: 5px;
+    margin-bottom: 3px;
+    transition: all 0.2s;
+}
+.btn-view {
+    background: #1e3a5f;
+    color: white;
+}
+.btn-view:hover {
+    background: #2a4a7a;
+}
+.btn-upload {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid #3b82f6;
+}
+.btn-upload:hover {
+    background: rgba(59, 130, 246, 0.4);
+}
+.btn-remind {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid #fbbf24;
+}
+.btn-remind:hover {
+    background: rgba(251, 191, 36, 0.4);
+}
+.btn-download {
+    background: rgba(255,255,255,0.15);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-download:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+.subtitle {
+    text-align: center;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .global-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-box {
+        min-width: auto;
+    }
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .data-table {
+        font-size: 0.85em;
+    }
+    .data-table th, .data-table td {
+        padding: 8px 10px;
+    }
+    .btn-action {
+        padding: 4px 10px;
+        font-size: 0.8em;
+    }
+}
+</style>
+{% endblock %}

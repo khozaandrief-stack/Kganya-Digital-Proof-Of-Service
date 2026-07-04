@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Superadmin Dashboard — KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Super Administrator Dashboard</h1>
+    <h3>Full control of the KGANYA Digital Proof Of Service System</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/superadmin/toggle-registration">
+        <button type="submit" style="padding: 15px 30px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer;">
+            {% if registrations_open %}
+                🔒 Close Registrations
+            {% else %}
+                🔓 Open Registrations
+            {% endif %}
+        </button>
+    </form>
+    
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">⚙️ System Management</div>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>📊 Tracking Dashboard</td>
+                    <td>Track POS submissions, uploads, and outstanding items across all users</td>
+                    <td><a href="/admin/dashboard"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>📇 Manage Church Contacts</td>
+                    <td>Update secretary and vice-secretary emails and phone numbers</td>
+                    <td><a href="/admin/manage-contacts"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>Admin Dashboard</td>
+                    <td>Manage products, users, and POS records</td>
+                    <td><a href="/admin"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>Pending Users</td>
+                    <td>Approve or reject registrations</td>
+                    <td><a href="/admin/pending-users"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>Users</td>
+                    <td>View and remove users</td>
+                    <td><a href="/manage-users"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>Admins</td>
+                    <td>View and remove admins</td>
+                    <td><a href="/manage-admins"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>Create Admin</td>
+                    <td>Create a new administrator</td>
+                    <td><a href="/create-admin"><button>Create</button></a></td>
+                </tr>
+                <tr>
+                    <td>📚 Receipt Booklets</td>
+                    <td>Allocate and manage receipt booklets for users</td>
+                    <td><a href="/admin/booklets"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>🏷️ Products</td>
+                    <td>Manage product prices and types</td>
+                    <td><a href="/admin/products"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>🗑️ Deleted Booklets</td>
+                    <td>View audit trail of all deleted booklets</td>
+                    <td><a href="/admin/deleted-booklets"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>All POS Records</td>
+                    <td>View every POS in the system</td>
+                    <td><a href="/all-pos-files"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>⏸️ Skipped Submissions</td>
+                    <td>Review users' explanations for missed Sunday submissions</td>
+                    <td><a href="/admin/skipped-submissions"><button>Open</button></a></td>
+                </tr>
+                <tr>
+                    <td>📧 Send Weekly Report</td>
+                    <td>Manually trigger missed submissions email to all admins</td>
+                    <td>
+                        <form method="POST" action="/admin/send-weekly-report" style="display:inline;">
+                            <button type="submit">Send Now</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr>
+                    <td>🛡️ Audit Trail</td>
+                    <td>View complete system audit log, login attempts, and activity statistics</td>
+                    <td><a href="/superadmin/audit-log"><button>Open</button></a></td>
+                </tr>
+                <tr style="background: rgba(220, 53, 69, 0.1);">
+                    <td>⚠️ Clear All POS</td>
+                    <td style="color: #dc3545; font-weight: bold;">Permanently delete ALL POS files for ALL users. This cannot be undone.</td>
+                    <td>
+                        <form method="POST" action="/admin/clear-all-pos" style="display:inline;" onsubmit="return confirm('ARE YOU SURE? This will permanently delete ALL POS records from the database. This action cannot be undone!');">
+                            <button type="submit" style="background-color: #dc3545; color: white;">🗑 Clear All</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

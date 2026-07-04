@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Create New User — KGANYA{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <h1>Create New User</h1>
+    <h3>Add a new user account directly</h3>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% if temp_password %}
+    <div class="alert alert-info">
+        <strong>Temporary Password (save this!):</strong> {{ temp_password }}
+        <br><small>The email system is not configured. Please share this password with the user securely.</small>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="login-card" style="max-width: 600px;">
+        <form method="POST" action="/admin/create-user" id="createUserForm">
+            
+            <div class="form-group">
+                <label>USERNAME</label>
+                <input type="text" name="username" class="form-control" placeholder="Enter username" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>SECRETARY CELLPHONE</label>
+                    <input type="tel" name="secretary_phone" class="form-control" placeholder="0821234567" required>
+                    <small style="color: rgba(255,255,255,0.7);">Format: 0821234567</small>
+                </div>
+                <div class="form-group">
+                    <label>SECRETARY EMAIL</label>
+                    <input type="email" name="secretary_email" class="form-control" placeholder="secretary@email.com" required>
+                    <small style="color: rgba(255,255,255,0.7);">OTP will be sent here</small>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>VICE-SECRETARY CELLPHONE</label>
+                    <input type="tel" name="vice_secretary_phone" class="form-control" placeholder="0837654321" required>
+                    <small style="color: rgba(255,255,255,0.7);">Format: 0837654321</small>
+                </div>
+                <div class="form-group">
+                    <label>VICE-SECRETARY EMAIL</label>
+                    <input type="email" name="vice_secretary_email" class="form-control" placeholder="vice@email.com" required>
+                    <small style="color: rgba(255,255,255,0.7);">OTP will be sent here</small>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>CHURCH CODE</label>
+                    <input type="text" name="church_code" class="form-control" placeholder="e.g. 12345" required>
+                    <small style="color: rgba(255,255,255,0.7);">Numbers only</small>
+                </div>
+                <div class="form-group">
+                    <label>CHURCH FILE NUMBER</label>
+                    <input type="text" name="church_file_number" class="form-control" placeholder="e.g. ABC123" required>
+                    <small style="color: rgba(255,255,255,0.7);">Letters and numbers only. Must be unique.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>CHURCH BRANCH NAME</label>
+                <input type="text" name="church_branch_name" class="form-control" placeholder="Enter church branch name" required>
+                <small style="color: rgba(255,255,255,0.7);">e.g. Main Branch, North Branch</small>
+            </div>
+
+            <div class="form-group">
+                <label>OTP CODE</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" name="otp_code" class="form-control" placeholder="Enter 6-digit OTP" required style="flex: 1;">
+                    <button type="button" class="btn-primary" onclick="sendOTP()" style="width: auto; margin-top: 0; white-space: nowrap;">📧 Send OTP to Email</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 25px;">
+                <button type="submit" class="btn-primary">Create User</button>
+                <a href="/admin"><button type="button" style="background: #6c757d; margin-left: 10px;">Cancel</button></a>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendOTP() {
+    const secEmail = document.querySelector('input[name="secretary_email"]').value.trim();
+    const viceEmail = document.querySelector('input[name="vice_secretary_email"]').value.trim();
+    
+    if (!secEmail && !viceEmail) {
+        alert("Please enter at least one email address.");
+        return;
+    }
+    
+    const email = secEmail || viceEmail;
+    
+    // Use FormData instead of JSON
+    const formData = new FormData();
+    formData.append('recipient', email);
+    formData.append('purpose', 'user_creation');
+    formData.append('method', 'email');
+    
+    fetch('/api/send-otp', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => {
+        if (!r.ok) {
+            throw new Error("Server returned " + r.status);
+        }
+        return r.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert("OTP sent to " + email);
+            if (data.dev_otp) {
+                alert("DEV MODE - OTP: " + data.dev_otp);
+            }
+        } else {
+            alert("Error: " + (data.error || "Failed to send OTP"));
+        }
+    })
+    .catch(err => {
+        console.error("OTP send failed:", err);
+        alert("Error: " + err.message);
+    });
+}
+</script>
+{% endblock %}

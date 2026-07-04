@@ -1,0 +1,2012 @@
+{% extends "base.html" %}
+
+{% block title %}Create POS — KGANYA{% endblock %}
+
+
+{% block extra_css %}
+<style>
+    input {
+        width: 90%;
+        padding: 5px;
+    }
+
+    .section-title {
+        background: rgba(0,0,0,0.45);
+        color: white;
+        padding: 10px;
+        margin-top: 30px;
+        border-radius: 5px;
+    }
+
+    .summary {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .card {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(6px);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    button {
+        background-color: #1e3a5f;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #162b46;
+    }
+
+    .delete-btn {
+        background-color: #dc3545;
+        margin-top: 0;
+    }
+
+    .delete-btn:hover {
+        background-color: #c82333;
+    }
+
+    select {
+        width: 90%;
+        padding: 5px;
+    }
+
+    .template-row {
+        display: none !important;
+    }
+
+        /* =========================================
+           BLOCKING OVERLAY STYLES
+           ========================================= */
+        #blockOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #blockOverlay.active {
+            display: flex !important;
+        }
+
+        #blockMessage {
+            background: #fff;
+            border: 4px solid #dc3545;
+            border-radius: 12px;
+            padding: 40px 60px;
+            text-align: center;
+            max-width: 800px;
+            box-shadow: 0 0 30px rgba(220, 53, 69, 0.6);
+        }
+
+        #blockMessage h1 {
+            color: #dc3545;
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #blockMessage p {
+            color: #333;
+            font-size: 20px;
+            line-height: 1.6;
+        }
+
+        #blockMessage .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .form-frozen {
+            pointer-events: none !important;
+            user-select: none !important;
+            opacity: 0.4 !important;
+            filter: grayscale(80%);
+        }
+
+        .form-frozen input,
+        .form-frozen select,
+        .form-frozen button,
+        .form-frozen textarea {
+            background-color: #e9ecef !important;
+            cursor: not-allowed !important;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- BLOCKING OVERLAY -->
+<div id="blockOverlay">
+    <div id="blockMessage">
+        <div class="icon">🚫</div>
+        <h1>Submission Blocked</h1>
+        <p id="blockText">Submit your reasons for skipping submissions. If you did, contact your administrator to unlock your submission.</p>
+        <div style="margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <a href="/submit-skip-reasons" style="display: inline-block; background: #dc3545; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: bold;">📝 Submit Skip Reasons</a>
+            <a href="/my-pos-files" style="display: inline-block; background: #1e3a5f; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-size: 16px;">📁 View My POS Files</a>
+            <a href="/logout" style="display: inline-block; background: #6c757d; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-size: 16px;">🚪 Logout</a>
+        </div>
+    </div>
+</div>
+
+<div class="container" id="posContainer">
+    <h1>KGANYA</h1>
+    <h2>LIGHTING THE WAY THROUGH SERVICE</h2>
+    <h3>Digital Proof Of Service</h3>
+
+    <form id="posForm" method="POST" action="/submit_pos" enctype="multipart/form-data">
+
+    <!-- HIDDEN FIELDS: All calculated values sent to server -->
+    <input type="hidden" name="grand_total_cash" id="hidden_grand_total_cash" value="0">
+    <input type="hidden" name="total_banking" id="hidden_total_banking" value="0">
+    <input type="hidden" name="total_parish" id="hidden_total_parish" value="0">
+    <input type="hidden" name="total_stickers" id="hidden_total_stickers" value="0">
+    <input type="hidden" name="expected_total" id="hidden_expected_total" value="0">
+    <input type="hidden" name="total_outstanding" id="hidden_total_outstanding" value="0">
+    <input type="hidden" name="final_status" id="hidden_final_status" value="DISCREPANCY">
+    <input type="hidden" name="final_conclusion" id="hidden_final_conclusion" value="">
+    <input type="hidden" name="banking_amount_words" id="hidden_banking_amount_words" value="">
+    <input type="hidden" name="banking_remarks" id="hidden_banking_remarks" value="">
+    <input type="hidden" name="minister_remarks" id="hidden_minister_remarks" value="">
+    <input type="hidden" name="minister_total" id="hidden_minister_total" value="0">
+    
+
+    <!-- Cash counts -->
+    <input type="hidden" name="count200" id="hidden_count200" value="0">
+    <input type="hidden" name="count100" id="hidden_count100" value="0">
+    <input type="hidden" name="count50" id="hidden_count50" value="0">
+    <input type="hidden" name="count20" id="hidden_count20" value="0">
+    <input type="hidden" name="count10" id="hidden_count10" value="0">
+    <input type="hidden" name="count_coins" id="hidden_count_coins" value="0">
+
+    <!-- Bank counts -->
+    <input type="hidden" name="bank_count200" id="hidden_bank_count200" value="0">
+    <input type="hidden" name="bank_count100" id="hidden_bank_count100" value="0">
+    <input type="hidden" name="bank_count50" id="hidden_bank_count50" value="0">
+    <input type="hidden" name="bank_count20" id="hidden_bank_count20" value="0">
+    <input type="hidden" name="bank_count10" id="hidden_bank_count10" value="0">
+    <input type="hidden" name="bank_count_coins" id="hidden_bank_count_coins" value="0">
+
+    <!-- Minister counts -->
+    <input type="hidden" name="minister_count200" id="hidden_minister_count200" value="0">
+    <input type="hidden" name="minister_count100" id="hidden_minister_count100" value="0">
+    <input type="hidden" name="minister_count50" id="hidden_minister_count50" value="0">
+    <input type="hidden" name="minister_count20" id="hidden_minister_count20" value="0">
+    <input type="hidden" name="minister_count10" id="hidden_minister_count10" value="0">
+    <input type="hidden" name="minister_count_coins" id="hidden_minister_count_coins" value="0">
+
+    <!-- Cancelled receipts JSON -->
+    <input type="hidden" name="cancelled_receipts_json" id="hidden_cancelled_receipts" value="[]">
+    <input type="hidden" name="cash_rows_json" id="hidden_cash_rows" value="[]">
+
+        <div class="section-title" style="font-weight: bold; color: yellow;">
+        Church Information
+    </div>
+
+    <table>
+        <tr>
+            <th>Church Name</th>
+            <th>Church Code</th>
+            <th>Church File Number</th>
+        </tr>
+        <tr>
+            <td>
+                <input type="text" name="church_name" value="{{ church_info.church_branch_name or session.username|replace('_', ' ') }}" readonly style="background: transparent; cursor: default;">
+            </td>
+            <td>
+                <input type="text" name="church_code" value="{{ church_info.church_code or '' }}" readonly style="background: transparent; cursor: default;">
+            </td>
+            <td>
+                <input type="text" name="church_file" value="{{ church_info.church_file_number or '' }}" readonly style="background: transparent; cursor: default;">
+            </td>
+        </tr>
+    </table>
+
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>POS Number <span style="color: #dc3545;">*</span></th>
+                <th>Bank Sheet <span style="color: #dc3545;">*</span></th>
+                <th>Banking Date</th>
+            </tr>
+            <tr>
+                <td><span id="currentDate"></span></td>
+                <td>
+                    <input type="text" name="pos_number"
+                           id="pos_number" 
+                           placeholder="e.g. POS 4501" 
+                           value="{{ suggested_pos }}"
+                           required>
+                </td>
+                <td>
+                    <input type="text" name="bank_sheet"
+                           id="bank_sheet" 
+                           placeholder="e.g. BA 1501" 
+                           value="{{ suggested_bank_sheet }}"
+                           required>
+                </td>
+                <td>
+                    <input type="text" name="banking_date_display"
+                           value="{{ banking_date_display }}" 
+                           readonly 
+                           style="background: #e9ecef; cursor: not-allowed;">
+                    <input type="hidden" name="banking_date" value="{{ banking_date }}">
+                </td>
+            </tr>
+        </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Product Information & Prices
+    </div>
+
+    <table id="productTable">
+        <tr>
+            <th>Product Name</th>
+            <th>Type</th>
+            <th>Price (After Deduction)</th>
+            <th>Deduction</th>
+            <th>Next Booklet Info</th>
+            <th>Next Booklet Number</th>
+            <th>Next Booklet Price</th>
+            <th>Next Booklet Deduction</th>
+        </tr>
+        {% for product in products|sort(attribute='name') %}
+        {% set booklet = booklet_map.get(product.name) %}
+        {% set product_booklets = booklet_data.get(product.name, []) %}
+        {% set ns = namespace(next_booklet=None, current_found=False) %}
+        {% for b in product_booklets %}
+            {% if ns.current_found and not ns.next_booklet %}
+                {% set ns.next_booklet = b %}
+            {% endif %}
+            {% if b.id == (booklet.booklet_id if booklet else -1) %}
+                {% set ns.current_found = True %}
+            {% endif %}
+        {% endfor %}
+        <tr data-product="{{ product.name }}" 
+            data-type="{{ booklet.receipt_type if booklet else '' }}" 
+            data-price="{{ product.price }}" 
+            data-deduction="{{ product.deduction }}"
+            data-from="{{ booklet.next_expected if booklet else '' }}">
+            <td>{{ product.name }}</td>
+            <td>
+                <input type="text" class="type" name="product_type[]" 
+                       value="{{ booklet.receipt_type if booklet else '' }}" 
+                       readonly 
+                       style="background: transparent; cursor: default;">
+            </td>
+            <td class="price">R {{ "%.2f"|format(product.price) }}</td>
+            <td class="deduction">R {{ "%.2f"|format(product.deduction) }}</td>
+            <td>
+                {% if ns.next_booklet %}
+                    {{ ns.next_booklet.receipt_type }} ({{ ns.next_booklet.receipt_from }} - {{ ns.next_booklet.receipt_to }})
+                {% else %}
+                    <span style="color: #888;">—</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if ns.next_booklet %}
+                    {{ ns.next_booklet.booklet_number }}
+                {% else %}
+                    <span style="color: #888;">—</span>
+                {% endif %}
+            </td>
+            <td class="next-price">
+                {% if ns.next_booklet %}
+                    R {{ "%.2f"|format(product.price) }}
+                {% else %}
+                    <span style="color: #888;">—</span>
+                {% endif %}
+            </td>
+            <td class="next-deduction">
+                {% if ns.next_booklet %}
+                    R {{ "%.2f"|format(product.deduction) }}
+                {% else %}
+                    <span style="color: #888;">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Proof Of Service
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>No of Stickers</th>
+                <th>Banking Amount</th>
+                <th>Parish Amount</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="serviceBody">
+            <tr class="service-row template-row" style="display:none;">
+                <td class="product-cell">
+                    <input type="hidden" class="product-hidden">
+                    <span class="product-display" style="display:block;padding:5px;text-align:center;"></span>
+                </td>
+                <td class="type-cell">
+                    <select class="type-select" style="width:90%;padding:5px;">
+                        <option value="">-- Select Type --</option>
+                    </select>
+                </td>
+                <td><input type="number" class="from" placeholder="Enter From"></td>
+                <td><input type="number" class="to" placeholder="Enter To"></td>
+                <td class="stickers">0</td>
+                <td class="banking">R 0.00</td>
+                <td class="parish">R 0.00</td>
+                <td>
+                    <button type="button" class="delete-btn" onclick="deleteRow(this)">Remove</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="text-align: right; margin-top: 10px;">
+        {% for product in products|sort(attribute='name') %}
+        <button type="button" onclick="addProductRow('{{ product.name }}')">+ {{ product.name }}</button>
+        {% endfor %}
+    </div>
+
+    <table>
+        <tr>
+            <th>Total Banking Amount</th>
+            <th>Total Parish Amount</th>
+            <th>Total Number Of Stickers</th>
+        </tr>
+        <tr>
+            <td id="totalBanking">R 0.00</td>
+            <td id="totalParish">R 0.00</td>
+            <td id="totalStickers">0</td>
+        </tr>
+    </table>
+
+    
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Cancelled Receipts
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>No Cancelled</th>
+            </tr>
+        </thead>
+        <tbody class="cancelled-table-body"></tbody>
+    </table>
+
+    <div style="text-align: right; margin-top: 10px;">
+        {% for product in products|sort(attribute='name') %}
+        <button type="button" onclick="addManualCancellation('{{ product.name }}')">+ {{ product.name }} CANCELLATION</button>
+        {% endfor %}
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Depositor's Details
+    </div>
+
+        <table>
+        <tr>
+            <th>Name & Surname <span style="color: #dc3545;">*</span></th>
+            <th>ID Number <span style="color: #dc3545;">*</span></th>
+            <th>Cellphone <span style="color: #dc3545;">*</span></th>
+        </tr>
+        <tr>
+            <td><input type="text" name="depositor_name" placeholder="Enter Name & Surname" required></td>
+            <td><input type="text" name="depositor_id" placeholder="Enter ID Number" required></td>
+            <td><input type="tel" name="depositor_phone" placeholder="Enter Cellphone Number" required></td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Witnesses Details
+    </div>
+
+        <table>
+        <tr>
+            <th>Witness 1 <span style="color: #dc3545;">*</span></th>
+            <th>Witness 2</th>
+            <th>Witness 3</th>
+        </tr>
+        <tr>
+            <td><input type="text" name="witness1" placeholder="Enter Name & Surname" required></td>
+            <td><input type="text" name="witness2" placeholder="Enter Name & Surname"></td>
+            <td><input type="text" name="witness3" placeholder="Enter Name & Surname"></td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Automatic Cash Calculation
+    </div>
+
+    <table id="cashTable">
+        <tr>
+            <th>R200</th>
+            <th>R100</th>
+            <th>R50</th>
+            <th>R20</th>
+            <th>R10</th>
+            <th>Coins</th>
+        </tr>
+        <tbody id="cashTableBody"></tbody>
+    </table>
+
+    <button type="button" onclick="addCashRow()">Add Cash Row</button>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Total Cash Available
+    </div>
+
+    <table border="1">
+        <tr>
+            <th>Type</th>
+            <th>Number Of Notes</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Grand Total Amount</th>
+        </tr>
+        <tr>
+            <td>R200</td>
+            <td id="count200">0</td>
+            <td id="total200">R 0.00</td>
+            <td id="status200" style="font-size: 20px; text-align: center;">–</td>
+            <td rowspan="6" id="grandTotalCash" style="vertical-align: middle; text-align: center; font-size: 24px; font-weight: bold;">R 0.00</td>
+        </tr>
+        <tr>
+            <td>R100</td>
+            <td id="count100">0</td>
+            <td id="total100">R 0.00</td>
+            <td id="status100" style="font-size: 20px; text-align: center;">–</td>
+        </tr>
+        <tr>
+            <td>R50</td>
+            <td id="count50">0</td>
+            <td id="total50">R 0.00</td>
+            <td id="status50" style="font-size: 20px; text-align: center;">–</td>
+        </tr>
+        <tr>
+            <td>R20</td>
+            <td id="count20">0</td>
+            <td id="total20">R 0.00</td>
+            <td id="status20" style="font-size: 20px; text-align: center;">–</td>
+        </tr>
+        <tr>
+            <td>R10</td>
+            <td id="count10">0</td>
+            <td id="total10">R 0.00</td>
+            <td id="status10" style="font-size: 20px; text-align: center;">–</td>
+        </tr>
+        <tr>
+            <td>Coins</td>
+            <td id="countCoins">0</td>
+            <td id="totalCoins">R 0.00</td>
+            <td id="statusCoins" style="font-size: 20px; text-align: center;">–</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Sorted Banking Amount Details
+    </div>
+
+    <table border="1">
+        <tr>
+            <th>Type</th>
+            <th>Number Of Notes</th>
+            <th>Banking Amount</th>
+            <th>Total Banking Amount Sorted</th>
+            <th>Banking Amount Remarks</th>
+        </tr>
+        <tr>
+            <td>R200</td>
+            <td id="bankCount200"></td>
+            <td id="bankAmount200"><span>R 0.00</span></td>
+            <td rowspan="6" id="sortedTotal" style="vertical-align: middle; text-align: center; font-size: 24px; font-weight: bold;">R 0.00</td>
+            <td rowspan="6" id="bankingRemarks" style="vertical-align: middle; text-align: center; font-size: 24px; font-weight: bold;">–</td>
+        </tr>
+        <tr>
+            <td>R100</td>
+            <td id="bankCount100"></td>
+            <td id="bankAmount100"><span>R 0.00</span></td>
+        </tr>
+        <tr>
+            <td>R50</td>
+            <td id="bankCount50"></td>
+            <td id="bankAmount50"><span>R 0.00</span></td>
+        </tr>
+        <tr>
+            <td>R20</td>
+            <td id="bankCount20"></td>
+            <td id="bankAmount20"><span>R 0.00</span></td>
+        </tr>
+        <tr>
+            <td>R10</td>
+            <td id="bankCount10"></td>
+            <td id="bankAmount10"><span>R 0.00</span></td>
+        </tr>
+        <tr>
+            <td>Coins</td>
+            <td id="bankCountCoins"></td>
+            <td id="bankAmountCoins"><span>R 0.00</span></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>Total Banking Amount Available</th>
+            <th>Total Outstanding Banking Amount</th>
+        </tr>
+        <tr>
+            <td id="totalCashAvailable"><span>R 0.00</span></td>
+            <td id="totalOutstandingBanking" style="color: red;"><span>R 0.00</span></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>Total Banking Amount In Words</th>
+        </tr>
+        <tr>
+            <td id="bankingAmountWords" style="font-weight: bold; font-size: 20px; text-align: center;">–</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Minister's Fund Structure
+    </div>
+
+    <table border="1">
+        <tr>
+            <th>Type</th>
+            <th>Number Of Notes Remaining</th>
+            <th>Amount Remaining</th>
+            <th>Total Minister's Fund Amount</th>
+            <th>Minister's Fund Remarks</th>
+        </tr>
+        <tr>
+            <td>R200</td>
+            <td id="ministerCount200">0</td>
+            <td id="ministerAmount200">R 0.00</td>
+            <td rowspan="6" id="ministerTotal" style="vertical-align: middle; text-align: center; font-size: 24px; font-weight: bold;">R 0.00</td>
+            <td rowspan="6" id="ministerRemarks" style="vertical-align: middle; text-align: center; font-size: 22px; font-weight: bold;">–</td>
+        </tr>
+        <tr>
+            <td>R100</td>
+            <td id="ministerCount100">0</td>
+            <td id="ministerAmount100">R 0.00</td>
+        </tr>
+        <tr>
+            <td>R50</td>
+            <td id="ministerCount50">0</td>
+            <td id="ministerAmount50">R 0.00</td>
+        </tr>
+        <tr>
+            <td>R20</td>
+            <td id="ministerCount20">0</td>
+            <td id="ministerAmount20">R 0.00</td>
+        </tr>
+        <tr>
+            <td>R10</td>
+            <td id="ministerCount10">0</td>
+            <td id="ministerAmount10">R 0.00</td>
+        </tr>
+        <tr>
+            <td>Coins</td>
+            <td id="ministerCountCoins">0</td>
+            <td id="ministerAmountCoins">R 0.00</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Parish Expenses
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Expense Type</th>
+                <th>Amount (R)</th>
+                <th>Receipt</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="expensesBody">
+            <!-- Expense rows added here -->
+        </tbody>
+    </table>
+
+    <div style="text-align: right; margin-top: 10px;">
+        <button type="button" onclick="addExpenseRow()">+ Add Expense</button>
+    </div>
+
+    <table>
+        <tr>
+            <th>Total Expenses</th>
+            <th>Net Parish Balance</th>
+        </tr>
+        <tr>
+            <td id="totalExpenses">R 0.00</td>
+            <td id="netParishBalance">R 0.00</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Conclusion
+    </div>
+
+    <table>
+        <tr>
+            <th>Final Remarks</th>
+        </tr>
+        <tr>
+            <td id="finalConclusion" style="height: 90px; font-size: 42px; font-weight: bold; text-align: center; vertical-align: middle; letter-spacing: 8px;">–</td>
+        </tr>
+    </table>
+
+    <div class="card" style="position: relative; height: 180px; overflow: hidden;">
+        <h3 style="position: relative; z-index: 2; color: lightgoldenrodyellow;">
+            Kganya Financial Service Providers | Lighting The Way Through Service
+        </h3>
+        <img src="{{ url_for('static', filename='Picture1.jpg') }}" style="position: absolute; bottom: 10px; right: 10px; width: 300px; height: auto; opacity: 0.35; border-radius: 12px; z-index: 1;">
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button type="submit">Submit POS</button>
+    </div>
+
+    </form>
+</div>
+{% endblock %}
+
+
+
+
+{% block extra_js %}
+<script>
+// =========================================
+// BLOCKING LOGIC — Server is the single source of truth
+// =========================================
+
+{% if blocked %}
+document.addEventListener("DOMContentLoaded", function() {
+    freezeForm("{{ skip_message|default('Submit your reasons for skipping submissions. If you did, contact your administrator to unlock your submission.')|e }}");
+});
+{% endif %}
+
+function freezeForm(message) {
+    const container = document.getElementById('posContainer');
+    const overlay = document.getElementById('blockOverlay');
+    const blockText = document.getElementById('blockText');
+    if (container) container.classList.add('form-frozen');
+    const form = document.getElementById('posForm');
+    if (form) {
+        form.querySelectorAll('input, select, textarea, button').forEach(el => {
+            el.disabled = true;
+            el.setAttribute('readonly', 'readonly');
+        });
+    }
+    if (message && blockText) blockText.innerHTML = message.replace(/\n/g, '<br>');
+    if (overlay) overlay.classList.add('active');
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); return false; }
+    }, true);
+    const posForm = document.getElementById('posForm');
+    if (posForm) {
+        posForm.addEventListener('submit', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            alert('Your submission is currently blocked. Please submit your reasons for skipping submissions or contact your administrator.');
+            return false;
+        }, true);
+    }
+}
+
+// =========================================
+// KGANYA POS — CLEAN MATHEMATICAL ENGINE
+// Applies to ALL products equally
+// =========================================
+
+// ── Data Maps (populated by server) ──
+const BOOKLET_DATA = {{ booklet_data|tojson|safe }};
+
+// Build BOOKLET_INFO: { product: [ {id, type, from, to, next_expected, is_active, is_completed, booklet_number}, ... ] }
+const BOOKLET_INFO = {};
+if (BOOKLET_DATA && typeof BOOKLET_DATA === 'object') {
+    if (Array.isArray(BOOKLET_DATA)) {
+        BOOKLET_DATA.forEach(bk => {
+            const product = bk.product_name || bk.product;
+            if (!product) return;
+            if (!BOOKLET_INFO[product]) BOOKLET_INFO[product] = [];
+            BOOKLET_INFO[product].push({
+                id: bk.id,
+                type: bk.receipt_type || '',
+                from: bk.receipt_from !== undefined ? bk.receipt_from : 0,
+                to: bk.receipt_to !== undefined ? bk.receipt_to : 0,
+                next_expected: bk.next_expected !== undefined ? bk.next_expected : 0,
+                is_active: (bk.is_active == 1) ? 1 : 0,
+                is_completed: (bk.is_completed == 1) ? 1 : 0,
+                booklet_number: bk.booklet_number || ''
+            });
+        });
+    } else {
+        Object.keys(BOOKLET_DATA).forEach(product => {
+            const bks = BOOKLET_DATA[product];
+            if (Array.isArray(bks)) {
+                BOOKLET_INFO[product] = bks.map(bk => ({
+                    id: bk.id,
+                    type: bk.receipt_type || '',
+                    from: bk.receipt_from !== undefined ? bk.receipt_from : 0,
+                    to: bk.receipt_to !== undefined ? bk.receipt_to : 0,
+                    next_expected: bk.next_expected !== undefined ? bk.next_expected : 0,
+                    is_active: (bk.is_active == 1) ? 1 : 0,
+                    is_completed: (bk.is_completed == 1) ? 1 : 0,
+                    booklet_number: bk.booklet_number || ''
+                }));
+            }
+        });
+    }
+    Object.keys(BOOKLET_INFO).forEach(product => {
+        BOOKLET_INFO[product].sort((a, b) => (a.id || 0) - (b.id || 0));
+    });
+}
+
+// DEBUG: Log what we actually loaded
+console.log("BOOKLET_INFO loaded:", BOOKLET_INFO);
+Object.keys(BOOKLET_INFO).forEach(product => {
+    const activeCount = BOOKLET_INFO[product].filter(b => b.is_active == 1).length;
+    console.log(`Product: ${product}, Total booklets: ${BOOKLET_INFO[product].length}, Active: ${activeCount}`);
+});
+
+const ALL_PRODUCTS = [{% for product in products|sort(attribute="name") %}"{{ product.name }}"{% if not loop.last %},{% endif %}{% endfor %}];
+
+// =========================================
+// HELPERS
+// =========================================
+function getActiveBooklets(product) {
+    const booklets = BOOKLET_INFO[product];
+    if (!booklets || booklets.length === 0) return [];
+    return booklets.filter(bk => bk.is_active == 1);
+}
+
+function getBookletTypesForProduct(product) {
+    const activeBooklets = getActiveBooklets(product);
+    const allBooklets = BOOKLET_INFO[product] || [];
+    return activeBooklets.map(bk => {
+        const fullIndex = allBooklets.indexOf(bk);
+        const overallMax = getOverallMax(product, bk.type);
+        const isExhausted = overallMax >= bk.to;
+        return {
+            type: bk.type || '',
+            from: bk.from,
+            to: bk.to,
+            index: fullIndex,
+            isExhausted: isExhausted
+        };
+    });
+}
+
+function getProductType(productName) {
+    if (!productName) return "";
+    const rows = document.querySelectorAll("#productTable tr[data-product]");
+    for (const row of rows) {
+        const name = (row.dataset.product || "").trim();
+        if (name === productName.trim()) {
+            return (row.dataset.type || "").trim();
+        }
+    }
+    return "";
+}
+
+function getProductPrice(productName) {
+    if (!productName) return 0;
+    const rows = document.querySelectorAll("#productTable tr[data-product]");
+    for (const row of rows) {
+        const name = (row.dataset.product || "").trim();
+        if (name === productName.trim()) {
+            if (row.dataset.price !== undefined) {
+                const value = Number(row.dataset.price);
+                if (!isNaN(value)) return value;
+            }
+        }
+    }
+    return 0;
+}
+
+function getProductDeduction(productName) {
+    if (!productName) return 0;
+    const rows = document.querySelectorAll("#productTable tr[data-product]");
+    for (const row of rows) {
+        const name = (row.dataset.product || "").trim();
+        if (name === productName.trim()) {
+            if (row.dataset.deduction !== undefined) {
+                const value = Number(row.dataset.deduction);
+                if (!isNaN(value)) return value;
+            }
+        }
+    }
+    return 0;
+}
+
+function getBookletForValue(product, value) {
+    const allBooklets = BOOKLET_INFO[product];
+    if (!allBooklets || allBooklets.length === 0) return null;
+    for (let i = 0; i < allBooklets.length; i++) {
+        const bk = allBooklets[i];
+        if (value >= bk.from && value <= bk.to) {
+            return { booklet: bk, index: i };
+        }
+    }
+    const lastBk = allBooklets[allBooklets.length - 1];
+    return { booklet: lastBk, index: allBooklets.length - 1 };
+}
+
+function getOverallMax(product, typeFilter) {
+    let service_max = -1;
+    document.querySelectorAll(".service-row:not(.template-row)").forEach(row => {
+        const rowProduct = row.querySelector(".product-hidden")?.value || "";
+        if (rowProduct !== product) return;
+        if (typeFilter) {
+            const rowType = row.querySelector(".type-select")?.value || "";
+            if (rowType !== typeFilter) return;
+        }
+        const toVal = parseInt(row.querySelector(".to")?.value);
+        const fromVal = parseInt(row.querySelector(".from")?.value);
+        if (!isNaN(toVal) && toVal > service_max) service_max = toVal;
+        else if (!isNaN(fromVal) && fromVal > 0 && (fromVal - 1) > service_max) service_max = fromVal - 1;
+    });
+
+    let cancelled_max_To = -1;
+    document.querySelectorAll(".cancelled-table-body tr:not(.manual-cancel-row)").forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 4) return;
+        const rowProduct = cells[0].innerText.trim();
+        if (rowProduct !== product) return;
+        if (typeFilter && cells[1].innerText.trim() !== typeFilter) return;
+        const toVal = parseInt(cells[3].innerText.trim());
+        if (!isNaN(toVal) && toVal > cancelled_max_To) cancelled_max_To = toVal;
+    });
+    document.querySelectorAll(".manual-cancel-row").forEach(row => {
+        const rowProduct = row.querySelector(".cancel-product")?.innerText.trim() || "";
+        if (rowProduct !== product) return;
+        if (typeFilter) {
+            const rowType = row.querySelector(".cancel-type")?.innerText.trim() || "";
+            if (rowType !== typeFilter) return;
+        }
+        const toVal = parseInt(row.querySelector(".manual-to")?.value);
+        if (!isNaN(toVal) && toVal > cancelled_max_To) cancelled_max_To = toVal;
+    });
+
+    return Math.max(service_max, cancelled_max_To);
+}
+
+function getNextBookletInfo(product) {
+    const activeBooklets = getActiveBooklets(product);
+    const allBooklets = BOOKLET_INFO[product];
+    if (!allBooklets || allBooklets.length === 0) return null;
+    if (activeBooklets.length === 0) return null;
+
+    const overall_max = getOverallMax(product);
+    const productType = getProductType(product);
+
+    if (overall_max < 0) {
+        let nextExpected = null;
+        document.querySelectorAll("#productTable tr[data-product]").forEach(row => {
+            if (row.dataset.product === product) {
+                const fromData = row.dataset.from;
+                if (fromData !== undefined && fromData !== "") nextExpected = parseInt(fromData);
+            }
+        });
+
+        if (nextExpected !== null && !isNaN(nextExpected)) {
+            for (let i = 0; i < activeBooklets.length; i++) {
+                const bk = activeBooklets[i];
+                const fullIndex = allBooklets.indexOf(bk);
+                if (nextExpected >= bk.from && nextExpected <= bk.to) {
+                    return { type: productType || bk.type, from: nextExpected, max: bk.to, index: fullIndex, booklet: bk };
+                }
+            }
+        }
+
+        const firstActive = activeBooklets[0];
+        const firstIndex = allBooklets.indexOf(firstActive);
+        return { type: productType || firstActive.type, from: firstActive.from, max: firstActive.to, index: firstIndex, booklet: firstActive };
+    }
+
+    let currentBooklet = null;
+    let currentIndex = -1;
+    for (let i = 0; i < activeBooklets.length; i++) {
+        const bk = activeBooklets[i];
+        if (overall_max >= bk.from && overall_max <= bk.to) {
+            currentBooklet = bk;
+            currentIndex = allBooklets.indexOf(bk);
+            break;
+        }
+    }
+
+    if (!currentBooklet) {
+        currentBooklet = activeBooklets[activeBooklets.length - 1];
+        currentIndex = allBooklets.indexOf(currentBooklet);
+    }
+
+    if (overall_max >= currentBooklet.to) {
+        const activeIdx = activeBooklets.indexOf(currentBooklet);
+        if (activeIdx + 1 < activeBooklets.length) {
+            const next = activeBooklets[activeIdx + 1];
+            const nextFullIndex = allBooklets.indexOf(next);
+            return { type: productType || next.type, from: next.from, max: next.to, index: nextFullIndex, booklet: next };
+        }
+        return { type: productType || currentBooklet.type, from: currentBooklet.to + 1, max: currentBooklet.to, index: currentIndex, booklet: currentBooklet };
+    }
+
+    return { type: productType || currentBooklet.type, from: overall_max + 1, max: currentBooklet.to, index: currentIndex, booklet: currentBooklet };
+}
+
+// =========================================
+// ROW CALCULATION
+// =========================================
+function calculateRow(row) {
+    const fromInput = row.querySelector(".from");
+    const toInput = row.querySelector(".to");
+    const stickersCell = row.querySelector(".stickers");
+    const bankingCell = row.querySelector(".banking");
+    const parishCell = row.querySelector(".parish");
+    const productHidden = row.querySelector(".product-hidden");
+
+    const product = productHidden?.value || "";
+    const fromRaw = fromInput?.value?.trim() || "";
+    const toRaw = toInput?.value?.trim() || "";
+
+    let stickers = 0;
+    if (fromRaw !== "" && toRaw !== "") {
+        const fromVal = Number(fromRaw);
+        const toVal = Number(toRaw);
+        if (!isNaN(fromVal) && !isNaN(toVal) && toVal >= fromVal) {
+            stickers = toVal - fromVal + 1;
+        }
+    }
+
+    if (stickersCell) stickersCell.innerText = stickers;
+
+    const price = getProductPrice(product);
+    const deduction = getProductDeduction(product);
+    const banking = stickers * price;
+    const parish = stickers * deduction;
+
+    if (bankingCell) bankingCell.innerText = "R " + banking.toFixed(2);
+    if (parishCell) parishCell.innerText = "R " + parish.toFixed(2);
+
+    return { stickers, banking, parish };
+}
+
+function recalculateAll() {
+    let totalBanking = 0, totalParish = 0, totalStickers = 0;
+
+    document.querySelectorAll(".service-row:not(.template-row)").forEach(row => {
+        const result = calculateRow(row);
+        totalBanking += result.banking;
+        totalParish += result.parish;
+        totalStickers += result.stickers;
+    });
+
+    document.getElementById("totalBanking").innerText = "R " + totalBanking.toFixed(2);
+    document.getElementById("totalParish").innerText = "R " + totalParish.toFixed(2);
+    document.getElementById("totalStickers").innerText = totalStickers;
+
+    document.getElementById("hidden_total_banking").value = totalBanking.toFixed(2);
+    document.getElementById("hidden_total_parish").value = totalParish.toFixed(2);
+    document.getElementById("hidden_total_stickers").value = totalStickers;
+
+    updateCancelledReceipts();
+    calculateCash();
+    calculateSortedBanking();
+    calculateMinisterFund();
+    calculateConclusion();
+}
+
+// =========================================
+// ADD / DELETE / SORT ROWS
+// =========================================
+function buildTypeSelect(typeSelect, product, selectedType, newRow) {
+    typeSelect.innerHTML = '<option value="">-- Select Type --</option>';
+    const bookletTypes = getBookletTypesForProduct(product);
+    bookletTypes.forEach(bt => {
+        const opt = document.createElement("option");
+        opt.value = bt.type;
+        opt.textContent = bt.type + " (" + bt.from + " - " + bt.to + ")";
+        if (bt.isExhausted) {
+            opt.disabled = true;
+            opt.style.color = "#888";
+            opt.textContent += " [MAX REACHED]";
+        }
+        opt.dataset.from = bt.from;
+        opt.dataset.to = bt.to;
+        opt.dataset.index = bt.index;
+        typeSelect.appendChild(opt);
+    });
+
+    if (selectedType) {
+        typeSelect.value = selectedType;
+    } else {
+        const firstAvailable = Array.from(typeSelect.options).find(o => !o.disabled && o.value);
+        if (firstAvailable) typeSelect.value = firstAvailable.value;
+    }
+
+    // Apply max from selected option
+    const selectedOpt = typeSelect.options[typeSelect.selectedIndex];
+    if (selectedOpt && selectedOpt.value) {
+        const selectedMax = parseInt(selectedOpt.dataset.to);
+        const selectedIdx = parseInt(selectedOpt.dataset.index);
+        const toInput = newRow.querySelector(".to");
+        if (toInput && !isNaN(selectedMax)) {
+            toInput.placeholder = "Max: " + selectedMax;
+            toInput.dataset.maxReceipt = selectedMax;
+            newRow.dataset.bookletIndex = selectedIdx;
+        }
+    }
+
+    typeSelect.addEventListener("change", function() {
+        const opt = this.options[this.selectedIndex];
+        const selectedMax = parseInt(opt.dataset.to);
+        const selectedIdx = parseInt(opt.dataset.index);
+        const toInput = newRow.querySelector(".to");
+        if (toInput && !isNaN(selectedMax)) {
+            toInput.placeholder = "Max: " + selectedMax;
+            toInput.dataset.maxReceipt = selectedMax;
+            newRow.dataset.bookletIndex = selectedIdx;
+            toInput.style.border = "";
+            toInput.style.backgroundColor = "";
+            const oldErr = newRow.querySelector(".to-error");
+            if (oldErr) oldErr.remove();
+        }
+        recalculateAll();
+    });
+}
+
+function addProductRow(product) {
+    const info = getNextBookletInfo(product);
+    if (!info) {
+        alert(product + " has no available booklet.");
+        return;
+    }
+
+    const tableBody = document.getElementById("serviceBody");
+    const template = document.querySelector(".template-row");
+    if (!tableBody || !template) return;
+
+    const newRow = template.cloneNode(true);
+    newRow.classList.remove("template-row");
+    newRow.style.display = "table-row";
+    newRow.dataset.bookletIndex = info.index;
+
+    // Set product name (display + hidden input for form submission)
+    const productHidden = newRow.querySelector(".product-hidden");
+    const productDisplay = newRow.querySelector(".product-display");
+    if (productHidden) {
+        productHidden.name = "product_name[]";
+        productHidden.value = product;
+    }
+    if (productDisplay) productDisplay.textContent = product;
+
+    // Build Type dropdown
+    const typeSelect = newRow.querySelector(".type-select");
+    if (typeSelect) {
+        typeSelect.name = "service_type[]";
+        buildTypeSelect(typeSelect, product, info.type, newRow);
+    }
+
+    // Set up From input
+    const fromInput = newRow.querySelector(".from");
+    if (fromInput) {
+        fromInput.name = "from[]";
+        fromInput.placeholder = "Enter From";
+        fromInput.value = info.from;
+        fromInput.addEventListener("input", function() {
+            calculateRow(newRow);
+            recalculateAll();
+        });
+    }
+
+    // Set up To input
+    const toInput = newRow.querySelector(".to");
+    if (toInput) {
+        toInput.name = "to[]";
+        toInput.placeholder = "Max: " + info.max;
+        toInput.dataset.maxReceipt = info.max;
+        toInput.dataset.product = product;
+        toInput.addEventListener("input", function() {
+            calculateRow(newRow);
+            recalculateAll();
+        });
+        toInput.addEventListener("blur", function() {
+            validateToInput(this, newRow);
+        });
+    }
+
+    // Reset calculated fields
+    newRow.querySelector(".stickers").innerText = "0";
+    newRow.querySelector(".banking").innerText = "R 0.00";
+    newRow.querySelector(".parish").innerText = "R 0.00";
+
+    tableBody.appendChild(newRow);
+    sortServiceRows();
+    recalculateAll();
+}
+
+function validateToInput(toInput, row) {
+    const product = toInput.dataset.product || row.querySelector(".product-hidden")?.value || "";
+    const val = parseInt(toInput.value);
+    const fromInput = row.querySelector(".from");
+    const fromVal = parseInt(fromInput?.value);
+    const maxReceipt = parseInt(toInput.dataset.maxReceipt);
+
+    toInput.style.border = "";
+    toInput.style.backgroundColor = "";
+    const oldErr = row.querySelector(".to-error");
+    if (oldErr) oldErr.remove();
+
+    if (!toInput.value.trim()) return;
+
+    if (!isNaN(maxReceipt) && !isNaN(val) && val > maxReceipt) {
+        toInput.style.border = "2px solid #dc3545";
+        toInput.style.backgroundColor = "#f8d7da";
+        const err = document.createElement("small");
+        err.className = "to-error";
+        err.style.cssText = "color:#dc3545;display:block;font-size:11px;margin-top:2px;";
+        err.textContent = "⚠️ Exceeds booklet max (" + maxReceipt + ")";
+        toInput.parentNode.appendChild(err);
+        return;
+    }
+
+    if (!isNaN(fromVal) && !isNaN(val) && val < fromVal) {
+        toInput.style.border = "2px solid #dc3545";
+        const err = document.createElement("small");
+        err.className = "to-error";
+        err.style.cssText = "color:#dc3545;display:block;font-size:11px;margin-top:2px;";
+        err.textContent = "⚠️ 'To' must be ≥ 'From' (" + fromVal + ")";
+        toInput.parentNode.appendChild(err);
+    }
+}
+
+function sortServiceRows() {
+    const tableBody = document.getElementById("serviceBody");
+    if (!tableBody) return;
+    const rows = Array.from(tableBody.querySelectorAll("tr.service-row:not(.template-row)"));
+    rows.sort((a, b) => {
+        const productA = (a.querySelector(".product-hidden")?.value || "").trim().toUpperCase();
+        const productB = (b.querySelector(".product-hidden")?.value || "").trim().toUpperCase();
+        return productA.localeCompare(productB);
+    });
+    rows.forEach(row => tableBody.appendChild(row));
+}
+
+function deleteRow(btn) {
+    const row = btn.closest("tr");
+    if (!row) return;
+    if (row.classList.contains("prefilled-row")) {
+        alert("Cannot delete pre-filled rows.");
+        return;
+    }
+    row.remove();
+    recalculateAll();
+}
+
+// =========================================
+// CANCELLED RECEIPTS
+// =========================================
+function updateCancelledReceipts() {
+    const cancelledTableBody = document.querySelector(".cancelled-table-body");
+    if (!cancelledTableBody) return;
+
+    // Preserve manual rows data before clearing
+    const manualRows = Array.from(cancelledTableBody.querySelectorAll(".manual-cancel-row"));
+    const manualRowData = manualRows.map(row => ({
+        product: row.querySelector(".cancel-product")?.innerText?.trim() || "",
+        type: row.querySelector(".cancel-type")?.innerText?.trim() || "",
+        from: row.querySelector(".manual-from")?.value || "",
+        to: row.querySelector(".manual-to")?.value || "",
+        stickers: row.querySelector(".manual-stickers")?.innerText || "0"
+    }));
+
+    cancelledTableBody.innerHTML = "";
+
+    const serviceRows = document.querySelectorAll(".service-row:not(.template-row)");
+
+    const productBookletRows = {};
+    serviceRows.forEach(row => {
+        const product = row.querySelector(".product-hidden")?.value?.trim();
+        if (!product) return;
+
+        const fromValue = parseInt(row.querySelector(".from")?.value);
+        const toValue = parseInt(row.querySelector(".to")?.value);
+        if (isNaN(fromValue) || isNaN(toValue)) return;
+
+        let bkIndex = parseInt(row.dataset?.bookletIndex);
+        let booklet = null;
+
+        if (!isNaN(bkIndex) && BOOKLET_INFO[product] && BOOKLET_INFO[product][bkIndex]) {
+            booklet = BOOKLET_INFO[product][bkIndex];
+        } else {
+            const bkInfo = getBookletForValue(product, toValue);
+            if (bkInfo) {
+                bkIndex = bkInfo.index;
+                booklet = bkInfo.booklet;
+            }
+        }
+
+        if (!booklet) return;
+
+        if (!productBookletRows[product]) productBookletRows[product] = {};
+        if (!productBookletRows[product][bkIndex]) {
+            productBookletRows[product][bkIndex] = { booklet: booklet, ranges: [] };
+        }
+        productBookletRows[product][bkIndex].ranges.push({ from: fromValue, to: toValue });
+    });
+
+    Object.keys(productBookletRows).forEach(product => {
+        if (["NEW BOOKS", "AMENDMENT"].includes(product)) return;
+        const bookletGroups = productBookletRows[product];
+        const activeBooklets = getActiveBooklets(product);
+
+        Object.keys(bookletGroups).forEach(bkIndexStr => {
+            const bkIndex = parseInt(bkIndexStr);
+            const group = bookletGroups[bkIndex];
+            const booklet = group.booklet;
+            const ranges = group.ranges;
+            if (!booklet || ranges.length === 0) return;
+            if (!activeBooklets.includes(booklet)) return;
+
+            const type = booklet.type || "";
+
+            let usedNumbers = [];
+            ranges.forEach(range => {
+                for (let i = range.from; i <= range.to; i++) {
+                    if (i >= booklet.from && i <= booklet.to) usedNumbers.push(i);
+                }
+            });
+            usedNumbers = [...new Set(usedNumbers)].sort((a, b) => a - b);
+
+            const touchedPages = new Set();
+            usedNumbers.forEach(num => {
+                const page = Math.floor((num - booklet.from) / 10);
+                touchedPages.add(page);
+            });
+
+            const missingNumbers = [];
+            touchedPages.forEach(page => {
+                const pageStart = booklet.from + (page * 10);
+                const pageEnd = Math.min(pageStart + 9, booklet.to);
+                for (let i = pageStart; i <= pageEnd; i++) {
+                    if (!usedNumbers.includes(i)) missingNumbers.push(i);
+                }
+            });
+            missingNumbers.sort((a, b) => a - b);
+
+            const groupedMissing = [];
+            let start = null, end = null;
+            missingNumbers.forEach((num, idx) => {
+                if (start === null) { start = end = num; }
+                else if (num === end + 1) { end = num; }
+                else { groupedMissing.push({ from: start, to: end }); start = end = num; }
+                if (idx === missingNumbers.length - 1 && start !== null) {
+                    groupedMissing.push({ from: start, to: end });
+                }
+            });
+
+            groupedMissing.forEach(range => {
+                const stickers = range.to - range.from + 1;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${product}</td><td>${type}</td><td>${range.from}</td><td>${range.to}</td><td>${stickers}</td>`;
+                cancelledTableBody.appendChild(tr);
+            });
+        });
+    });
+
+    manualRowData.forEach(data => {
+        const tr = document.createElement("tr");
+        tr.classList.add("manual-cancel-row");
+        tr.innerHTML = `
+            <td class="cancel-product">${data.product}</td>
+            <td class="cancel-type">${data.type}</td>
+            <td><input type="number" class="manual-from" value="${data.from}"></td>
+            <td><input type="number" class="manual-to" value="${data.to}"></td>
+            <td class="manual-stickers">${data.stickers}</td>
+            <td><button type="button" class="delete-btn" onclick="deleteCancellationRow(this)">Delete</button></td>
+        `;
+        cancelledTableBody.appendChild(tr);
+    });
+}
+
+function addManualCancellation(product) {
+    const cancelledTableBody = document.querySelector(".cancelled-table-body");
+    if (!cancelledTableBody) return;
+
+    const tr = document.createElement("tr");
+    tr.classList.add("manual-cancel-row");
+    const type = getProductType(product) || "";
+
+    tr.innerHTML = `
+        <td class="cancel-product">${product}</td>
+        <td class="cancel-type">${type}</td>
+        <td><input type="number" class="manual-from" placeholder="From" oninput="calculateManualCancelledRow(this.closest('tr'))"></td>
+        <td><input type="number" class="manual-to" placeholder="To" oninput="calculateManualCancelledRow(this.closest('tr'))"></td>
+        <td class="manual-stickers">0</td>
+        <td><button type="button" class="delete-btn" onclick="deleteCancellationRow(this)">Delete</button></td>
+    `;
+    cancelledTableBody.appendChild(tr);
+}
+
+function calculateManualCancelledRow(row) {
+    if (!row) return;
+    const fromInput = row.querySelector(".manual-from");
+    const toInput = row.querySelector(".manual-to");
+    const stickersCell = row.querySelector(".manual-stickers");
+    if (!fromInput || !toInput || !stickersCell) return;
+
+    const fromRaw = fromInput.value.trim(), toRaw = toInput.value.trim();
+    if (fromRaw === "" || toRaw === "") { stickersCell.innerText = 0; return; }
+
+    const fromValue = Number(fromRaw), toValue = Number(toRaw);
+    const product = row.querySelector(".cancel-product")?.innerText?.trim() || "";
+
+    const bkInfo = getBookletForValue(product, toValue);
+    const booklet = bkInfo ? bkInfo.booklet : null;
+    const maxReceipt = booklet ? booklet.to : 0;
+    const minReceipt = booklet ? booklet.from : 0;
+
+    const oldErr = row.querySelector(".cancel-error");
+    if (oldErr) oldErr.remove();
+    fromInput.style.border = "";
+    toInput.style.border = "";
+
+    let stickers = 0;
+    if (Number.isFinite(fromValue) && Number.isFinite(toValue) && fromValue >= 0 && toValue >= 0 && toValue >= fromValue) {
+        stickers = toValue - fromValue + 1;
+    }
+    stickersCell.innerText = stickers;
+
+    if (maxReceipt && toValue > maxReceipt) {
+        toInput.style.border = "2px solid #dc3545";
+        const err = document.createElement("small");
+        err.className = "cancel-error";
+        err.style.cssText = "color:#dc3545;display:block;font-size:11px;margin-top:2px;";
+        err.innerText = `⚠️ Exceeds booklet max (${maxReceipt})`;
+        toInput.parentNode.appendChild(err);
+    }
+    if (minReceipt && fromValue < minReceipt) {
+        fromInput.style.border = "2px solid #dc3545";
+        const err = document.createElement("small");
+        err.className = "cancel-error";
+        err.style.cssText = "color:#dc3545;display:block;font-size:11px;margin-top:2px;";
+        err.innerText = `⚠️ Below booklet min (${minReceipt})`;
+        fromInput.parentNode.appendChild(err);
+    }
+}
+
+function deleteCancellationRow(btn) {
+    const row = btn.closest("tr");
+    if (row) row.remove();
+}
+
+// =========================================
+// CASH MANAGEMENT
+// =========================================
+// =========================================
+// CASH MANAGEMENT — CORRECTED
+// =========================================
+function addCashRow() {
+    const tbody = document.getElementById("cashTableBody");
+    if (!tbody) return;
+    const row = document.createElement("tr");
+    row.innerHTML = `
+        <td><input type="number" class="cash-input r200" name="cash_r200[]"></td>
+        <td><input type="number" class="cash-input r100" name="cash_r100[]"></td>
+        <td><input type="number" class="cash-input r50" name="cash_r50[]"></td>
+        <td><input type="number" class="cash-input r20" name="cash_r20[]"></td>
+        <td><input type="number" class="cash-input r10" name="cash_r10[]"></td>
+        <td><input type="number" class="cash-input coins" name="cash_coins[]" step="0.01"></td>
+    `;
+    tbody.appendChild(row);
+    // Trigger recalculation
+    calculateCash();
+    calculateSortedBanking();
+    calculateMinisterFund();
+    calculateConclusion();
+}
+
+function getSumByClass(className) {
+    let total = 0;
+    document.querySelectorAll("." + className).forEach(input => {
+        let value = Number(input.value);
+        if (!Number.isNaN(value)) total += value;  // Allow negatives for net calculation
+    });
+    return total;
+}
+
+function formatZAR(value) {
+    return "R " + value.toFixed(2);
+}
+
+function calculateCash() {
+    const denominations = [
+        { key: "r200", value: 200, countId: "count200", totalId: "total200", statusId: "status200" },
+        { key: "r100", value: 100, countId: "count100", totalId: "total100", statusId: "status100" },
+        { key: "r50", value: 50, countId: "count50", totalId: "total50", statusId: "status50" },
+        { key: "r20", value: 20, countId: "count20", totalId: "total20", statusId: "status20" },
+        { key: "r10", value: 10, countId: "count10", totalId: "total10", statusId: "status10" },
+        { key: "coins", value: 1, countId: "countCoins", totalId: "totalCoins", statusId: "statusCoins" }
+    ];
+    let grandTotal = 0;
+    denominations.forEach(d => {
+        let count = getSumByClass(d.key);
+        let total = count * d.value;
+        document.getElementById(d.countId).innerText = count;
+        document.getElementById(d.totalId).innerText = formatZAR(total);
+        let statusCell = document.getElementById(d.statusId);
+        if (count < 0) {
+            statusCell.innerHTML = "❌ Negative count!";
+            statusCell.style.color = "red";
+            statusCell.style.fontSize = "22px";
+        } else {
+            statusCell.innerHTML = "✔";
+            statusCell.style.color = "blue";
+            statusCell.style.fontSize = "22px";
+            grandTotal += total;
+        }
+    });
+    document.getElementById("grandTotalCash").innerText = formatZAR(grandTotal);
+    updateCashRowsJSON();
+}
+
+function updateCashRowsJSON() {
+    const rows = [];
+    document.querySelectorAll("#cashTableBody tr").forEach(row => {
+        rows.push({
+            r200: Number(row.querySelector(".r200")?.value) || 0,
+            r100: Number(row.querySelector(".r100")?.value) || 0,
+            r50: Number(row.querySelector(".r50")?.value) || 0,
+            r20: Number(row.querySelector(".r20")?.value) || 0,
+            r10: Number(row.querySelector(".r10")?.value) || 0,
+            coins: Number(row.querySelector(".coins")?.value) || 0
+        });
+    });
+    document.getElementById("hidden_cash_rows").value = JSON.stringify(rows);
+}
+
+function numberToWords(num) {
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    function convertHundreds(n) {
+        let result = "";
+        if (n >= 100) {
+            result += ones[Math.floor(n / 100)] + " Hundred";
+            n %= 100;
+            if (n > 0) result += " AND ";
+        }
+        if (n >= 20) {
+            result += tens[Math.floor(n / 10)];
+            n %= 10;
+            if (n > 0) result += " ";
+        }
+        if (n > 0 && n < 20) result += ones[n];
+        return result.trim();
+    }
+
+    if (num === 0) return "ZERO RANDS ONLY";
+    if (num < 0) return "NEGATIVE AMOUNTS NOT SUPPORTED";
+    if (num > 999999999) return "AMOUNT TOO LARGE";
+
+    let words = "";
+    if (num >= 1000000) {
+        words += convertHundreds(Math.floor(num / 1000000)) + " Million";
+        num %= 1000000;
+        if (num > 0) words += " ";
+    }
+    if (num >= 1000) {
+        words += convertHundreds(Math.floor(num / 1000)) + " Thousand";
+        num %= 1000;
+        if (num > 0) {
+            if (num < 100) words += " AND ";
+            else words += " ";
+        }
+    }
+    if (num > 0) words += convertHundreds(num);
+
+    return (words.trim() + " Rands Only").toUpperCase();
+}
+
+// =========================================
+// SORTED BANKING — CORRECTED
+// =========================================
+function calculateSortedBanking() {
+    let required = parseFloat(document.getElementById("totalBanking").innerText.replace("R", "")) || 0;
+    let available = {
+        200: parseInt(document.getElementById("count200").innerText) || 0,
+        100: parseInt(document.getElementById("count100").innerText) || 0,
+        50: parseInt(document.getElementById("count50").innerText) || 0,
+        20: parseInt(document.getElementById("count20").innerText) || 0,
+        10: parseInt(document.getElementById("count10").innerText) || 0,
+        1: parseInt(document.getElementById("countCoins").innerText) || 0
+    };
+    let denominations = [
+        { value: 200, countId: "bankCount200", amountId: "bankAmount200" },
+        { value: 100, countId: "bankCount100", amountId: "bankAmount100" },
+        { value: 50, countId: "bankCount50", amountId: "bankAmount50" },
+        { value: 20, countId: "bankCount20", amountId: "bankAmount20" },
+        { value: 10, countId: "bankCount10", amountId: "bankAmount10" },
+        { value: 1, countId: "bankCountCoins", amountId: "bankAmountCoins" }
+    ];
+    let remaining = required, totalSorted = 0;
+    denominations.forEach(d => {
+        let canUse = available[d.value] || 0;
+        let useNotes = Math.min(Math.floor(remaining / d.value), canUse);
+        let allocated = useNotes * d.value;
+        remaining -= allocated;
+        totalSorted += allocated;
+        let countCell = document.getElementById(d.countId);
+        if (countCell) countCell.innerText = useNotes;
+        let amountCell = document.getElementById(d.amountId);
+        if (amountCell) amountCell.innerText = "R " + allocated.toFixed(2);
+    });
+    let outstanding = remaining;
+    document.getElementById("totalCashAvailable").innerText = "R " + totalSorted.toFixed(2);
+    const outstandingElement = document.getElementById("totalOutstandingBanking");
+    outstandingElement.innerText = "R " + outstanding.toFixed(2);
+    outstandingElement.style.color = outstanding > 0 ? "red" : "black";
+    document.getElementById("sortedTotal").innerText = "R " + totalSorted.toFixed(2);
+
+    let remarksCell = document.getElementById("bankingRemarks");
+    let wordsCell = document.getElementById("bankingAmountWords");
+    let totalParish = parseFloat(document.getElementById("totalParish").innerText.replace("R", "")) || 0;
+    let totalCashAvailable = parseFloat(document.getElementById("grandTotalCash").innerText.replace("R", "")) || 0;
+
+    if (totalSorted < required && (required + totalParish) > totalCashAvailable) {
+        remarksCell.innerText = "❌ Short by R " + outstanding.toFixed(2);
+        remarksCell.style.color = "red";
+        wordsCell.innerText = "Amount is Outstanding, See Banking Amount Remarks";
+        wordsCell.style.color = "red";
+    } else if (totalSorted === required) {
+        remarksCell.innerText = "✔ Perfect Banking";
+        remarksCell.style.color = "blue";
+        wordsCell.innerText = numberToWords(Math.round(totalSorted));
+        wordsCell.style.color = "blue";
+    } else if ((required + totalParish) === totalCashAvailable && totalSorted !== required) {
+        remarksCell.innerText = "❌ Banking Amount Is Sufficient, You just Need to Change Some Of Your Notes";
+        remarksCell.style.color = "red";
+        wordsCell.innerText = "Banking Amount Is Sufficient, You Just Need To Change Some Of Your Notes";
+        wordsCell.style.color = "red";
+    } else {
+        remarksCell.innerText = "❌ Banking Error | Please Recount Your Cash Notes & Coins";
+        remarksCell.style.color = "red";
+        wordsCell.innerText = "Please Check Your Cash Calculation";
+        wordsCell.style.color = "red";
+    }
+}
+
+// =========================================
+// MINISTER'S FUND — CORRECTED
+// =========================================
+function calculateMinisterFund() {
+    let totalBanking = parseFloat(document.getElementById("totalBanking").innerText.replace("R", "")) || 0;
+    let totalParish = parseFloat(document.getElementById("totalParish").innerText.replace("R", "")) || 0;
+    let grandTotalCash = parseFloat(document.getElementById("grandTotalCash").innerText.replace("R", "")) || 0;
+    
+    let available = {
+        200: parseInt(document.getElementById("count200").innerText) || 0,
+        100: parseInt(document.getElementById("count100").innerText) || 0,
+        50: parseInt(document.getElementById("count50").innerText) || 0,
+        20: parseInt(document.getElementById("count20").innerText) || 0,
+        10: parseInt(document.getElementById("count10").innerText) || 0,
+        1: parseInt(document.getElementById("countCoins").innerText) || 0
+    };
+    let bankUsed = {
+        200: parseInt(document.getElementById("bankCount200").innerText) || 0,
+        100: parseInt(document.getElementById("bankCount100").innerText) || 0,
+        50: parseInt(document.getElementById("bankCount50").innerText) || 0,
+        20: parseInt(document.getElementById("bankCount20").innerText) || 0,
+        10: parseInt(document.getElementById("bankCount10").innerText) || 0,
+        1: parseInt(document.getElementById("bankCountCoins").innerText) || 0
+    };
+    let denominations = [
+        { value: 200, countId: "ministerCount200", amountId: "ministerAmount200" },
+        { value: 100, countId: "ministerCount100", amountId: "ministerAmount100" },
+        { value: 50, countId: "ministerCount50", amountId: "ministerAmount50" },
+        { value: 20, countId: "ministerCount20", amountId: "ministerAmount20" },
+        { value: 10, countId: "ministerCount10", amountId: "ministerAmount10" },
+        { value: 1, countId: "ministerCountCoins", amountId: "ministerAmountCoins" }
+    ];
+    let totalMinister = 0;
+    denominations.forEach(d => {
+        let remaining = (available[d.value] || 0) - (bankUsed[d.value] || 0);
+        let amount = remaining * d.value;
+        totalMinister += amount;
+        let countCell = document.getElementById(d.countId);
+        if (countCell) countCell.innerText = remaining;
+        let amountCell = document.getElementById(d.amountId);
+        if (amountCell) amountCell.innerText = "R " + amount.toFixed(2);
+    });
+    document.getElementById("ministerTotal").innerText = "R " + totalMinister.toFixed(2);
+
+    let expectedCash = totalBanking + totalParish;
+    let ministerRemarks = document.getElementById("ministerRemarks");
+
+    if (grandTotalCash === expectedCash) {
+        ministerRemarks.innerText = "✔ Perfect Minister's Fund";
+        ministerRemarks.style.color = "blue";
+    } else if (grandTotalCash > expectedCash) {
+        let excess = grandTotalCash - expectedCash;
+        ministerRemarks.innerText = "❌ Excess by R " + excess.toFixed(2);
+        ministerRemarks.style.color = "red";
+    } else {
+        //let shortfall = expectedCash - grandTotalCash;
+        let  shortfall = totalParish -totalMinister;
+        ministerRemarks.innerText = "❌ Short by R " + shortfall.toFixed(2);
+        ministerRemarks.style.color = "red";
+    } 
+
+
+}
+
+// =========================================
+// CONCLUSION — CORRECTED
+// =========================================
+function calculateConclusion() {
+    let totalBanking = parseFloat(document.getElementById("totalBanking").innerText.replace("R", "")) || 0;
+    let totalParish = parseFloat(document.getElementById("totalParish").innerText.replace("R", "")) || 0;
+    let grandTotalCash = parseFloat(document.getElementById("grandTotalCash").innerText.replace("R", "")) || 0;
+    let totalSorted = parseFloat(document.getElementById("sortedTotal").innerText.replace("R", "")) || 0;
+    let outstanding = parseFloat(document.getElementById("totalOutstandingBanking").innerText.replace("R", "")) || 0;
+
+    let conclusionCell = document.getElementById("finalConclusion");
+    let finalStatus = "DISCREPANCY";
+    let conclusionText = "";
+    let amount = 0;
+
+    let expectedCash = totalBanking + totalParish;
+
+    if (grandTotalCash === expectedCash) {
+        finalStatus = "BALANCED";
+        conclusionText = "BALANCED — PULA! PULA! PULA!";
+        conclusionCell.style.color = "lightgoldenrodyellow";
+        conclusionCell.style.textAlign = "center";
+        conclusionCell.innerText = conclusionText;
+    } else if (grandTotalCash < expectedCash) {
+        amount = expectedCash - grandTotalCash;
+        finalStatus = "TOTAL LOSS";
+        conclusionText = "TOTAL LOSS: R " + amount.toFixed(2);
+        conclusionCell.style.color = "red";
+        conclusionCell.style.textAlign = "center";
+        conclusionCell.innerText = conclusionText;
+    } else if (grandTotalCash > expectedCash) {
+        amount = grandTotalCash - expectedCash;
+        finalStatus = "TOTAL EXCESS";
+        conclusionText = "TOTAL EXCESS: R " + amount.toFixed(2);
+        conclusionCell.style.color = "orange";
+        conclusionCell.style.textAlign = "center";
+        conclusionCell.innerText = conclusionText;
+    } else {
+        conclusionText = "DISCREPANCY";
+        conclusionCell.style.color = "red";
+        conclusionCell.style.textAlign = "center";
+        conclusionCell.innerText = conclusionText;
+    }
+
+    document.getElementById("hidden_final_status").value = finalStatus;
+    document.getElementById("hidden_final_conclusion").value = conclusionText;
+
+    updateAllHiddenFields();
+}
+
+// =========================================
+// EXPENSES — CORRECTED
+// =========================================
+function addExpenseRow() {
+    const tbody = document.getElementById("expensesBody");
+    if (!tbody) return;
+    const row = document.createElement("tr");
+    row.className = "expense-row";
+    row.innerHTML = `
+        <td>
+            <select class="expense-type" name="expense_type[]" onchange="handleExpenseTypeChange(this)">
+                <option value="">-- Select --</option>
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Stationery</option>
+                <option>Electricity</option>
+                <option>Water</option>
+                <option>Other</option>
+            </select>
+            <input type="text" class="expense-other-desc" name="expense_description[]" placeholder="Describe expense..." style="display:none; margin-top:5px;">
+        </td>
+        <td><input type="number" class="expense-amount" name="expense_amount[]" placeholder="0.00" step="0.01" min="0"></td>
+        <td><input type="file" class="expense-receipt" name="expense_receipt[]" accept=".pdf,.png,.jpg,.jpeg" style="font-size: 12px;"></td>
+        <td><button type="button" class="delete-btn" onclick="deleteExpenseRow(this)">Remove</button></td>
+    `;
+    tbody.appendChild(row);
+    calculateExpenses();
+}
+
+function handleExpenseTypeChange(select) {
+    const row = select.closest("tr");
+    const otherInput = row.querySelector(".expense-other-desc");
+    if (select.value === "Other") { otherInput.style.display = "block"; otherInput.required = true; }
+    else { otherInput.style.display = "none"; otherInput.required = false; otherInput.value = ""; }
+    
+    calculateExpenses();           
+    //calculateMinisterFund();       
+    //calculateConclusion(); 
+}
+
+function deleteExpenseRow(btn) {
+    const row = btn.closest("tr");
+    if (row) { row.remove(); calculateExpenses(); }
+    //calculateMinisterFund();   
+    //calculateConclusion();
+}
+
+function calculateExpenses() {
+    let totalExpenses = 0;
+    document.querySelectorAll(".expense-amount").forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        if (val > 0) totalExpenses += val;
+    });
+    document.getElementById("totalExpenses").innerText = "R " + totalExpenses.toFixed(2);
+    
+    const totalMinister = parseFloat(document.getElementById("ministerTotal").innerText.replace("R", "").trim()) || 0;
+    const netBalance = totalMinister - totalExpenses;
+    document.getElementById("netParishBalance").innerText = "R " + netBalance.toFixed(2);
+}
+
+// =========================================
+// HIDDEN FIELDS & VALIDATION
+// =========================================
+function updateAllHiddenFields() {
+    document.getElementById("hidden_grand_total_cash").value = (parseFloat(document.getElementById("grandTotalCash").innerText.replace("R", "")) || 0).toFixed(2);
+    document.getElementById("hidden_total_banking").value = (parseFloat(document.getElementById("totalBanking").innerText.replace("R", "")) || 0).toFixed(2);
+    document.getElementById("hidden_total_parish").value = (parseFloat(document.getElementById("totalParish").innerText.replace("R", "")) || 0).toFixed(2);
+    document.getElementById("hidden_total_stickers").value = document.getElementById("totalStickers").innerText || "0";
+    document.getElementById("hidden_expected_total").value = ((parseFloat(document.getElementById("totalBanking").innerText.replace("R", "")) || 0) + (parseFloat(document.getElementById("totalParish").innerText.replace("R", "")) || 0)).toFixed(2);
+    document.getElementById("hidden_total_outstanding").value = (parseFloat(document.getElementById("totalOutstandingBanking").innerText.replace("R", "")) || 0).toFixed(2);
+
+    document.getElementById("hidden_count200").value = document.getElementById("count200").innerText || "0";
+    document.getElementById("hidden_count100").value = document.getElementById("count100").innerText || "0";
+    document.getElementById("hidden_count50").value = document.getElementById("count50").innerText || "0";
+    document.getElementById("hidden_count20").value = document.getElementById("count20").innerText || "0";
+    document.getElementById("hidden_count10").value = document.getElementById("count10").innerText || "0";
+    document.getElementById("hidden_count_coins").value = document.getElementById("countCoins").innerText || "0";
+
+    document.getElementById("hidden_bank_count200").value = document.getElementById("bankCount200").innerText || "0";
+    document.getElementById("hidden_bank_count100").value = document.getElementById("bankCount100").innerText || "0";
+    document.getElementById("hidden_bank_count50").value = document.getElementById("bankCount50").innerText || "0";
+    document.getElementById("hidden_bank_count20").value = document.getElementById("bankCount20").innerText || "0";
+    document.getElementById("hidden_bank_count10").value = document.getElementById("bankCount10").innerText || "0";
+    document.getElementById("hidden_bank_count_coins").value = document.getElementById("bankCountCoins").innerText || "0";
+
+    document.getElementById("hidden_minister_count200").value = document.getElementById("ministerCount200").innerText || "0";
+    document.getElementById("hidden_minister_count100").value = document.getElementById("ministerCount100").innerText || "0";
+    document.getElementById("hidden_minister_count50").value = document.getElementById("ministerCount50").innerText || "0";
+    document.getElementById("hidden_minister_count20").value = document.getElementById("ministerCount20").innerText || "0";
+    document.getElementById("hidden_minister_count10").value = document.getElementById("ministerCount10").innerText || "0";
+    document.getElementById("hidden_minister_count_coins").value = document.getElementById("ministerCountCoins").innerText || "0";
+
+    document.getElementById("hidden_banking_amount_words").value = document.getElementById("bankingAmountWords").innerText || "";
+    document.getElementById("hidden_banking_remarks").value = document.getElementById("bankingRemarks").innerText || "";
+    document.getElementById("hidden_minister_remarks").value = document.getElementById("ministerRemarks").innerText || "";
+    document.getElementById("hidden_minister_total").value = (parseFloat(document.getElementById("ministerTotal").innerText.replace("R", "")) || 0).toFixed(2);
+
+    updateCancelledReceiptsJSON();
+    updateCashRowsJSON();
+}
+
+function updateCancelledReceiptsJSON() {
+    let cancelledData = [];
+    document.querySelectorAll(".cancelled-table-body tr:not(.manual-cancel-row)").forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length >= 5) {
+            cancelledData.push({
+                product: cells[0].innerText.trim(),
+                type: cells[1].innerText.trim(),
+                from: parseInt(cells[2].innerText.trim()) || 0,
+                to: parseInt(cells[3].innerText.trim()) || 0,
+                stickers: parseInt(cells[4].innerText.trim()) || 0,
+                manual: false
+            });
+        }
+    });
+    document.querySelectorAll(".manual-cancel-row").forEach(row => {
+        const product = row.querySelector(".cancel-product")?.innerText.trim() || "";
+        const type = row.querySelector(".cancel-type")?.innerText.trim() || "";
+        const fromVal = parseInt(row.querySelector(".manual-from")?.value) || 0;
+        const toVal = parseInt(row.querySelector(".manual-to")?.value) || 0;
+        const stickers = parseInt(row.querySelector(".manual-stickers")?.innerText) || 0;
+        cancelledData.push({ product, type, from: fromVal, to: toVal, stickers, manual: true });
+    });
+    document.getElementById("hidden_cancelled_receipts").value = JSON.stringify(cancelledData);
+}
+
+function validateForm() {
+    const posNumber = document.getElementById("pos_number")?.value.trim();
+    const bankSheet = document.getElementById("bank_sheet")?.value.trim();
+    const depositorName = document.querySelector("input[name='depositor_name']")?.value.trim();
+    const depositorId = document.querySelector("input[name='depositor_id']")?.value.trim();
+    const depositorPhone = document.querySelector("input[name='depositor_phone']")?.value.trim();
+    const witness1 = document.querySelector("input[name='witness1']")?.value.trim();
+
+    let errors = [];
+    if (!posNumber) errors.push("POS Number is required");
+    if (!bankSheet) errors.push("Bank Sheet is required");
+    if (!depositorName) errors.push("Depositor Name is required");
+    if (!depositorId) errors.push("Depositor ID is required");
+    if (!depositorPhone) errors.push("Depositor Phone is required");
+    if (!witness1) errors.push("Witness 1 is required");
+
+    document.querySelectorAll(".to-error").forEach(err => errors.push(err.innerText));
+    document.querySelectorAll(".cancel-error").forEach(err => errors.push(err.innerText));
+
+    if (errors.length > 0) {
+        alert("Please fix the following errors:\n\n" + errors.join("\n"));
+        return false;
+    }
+    updateAllHiddenFields();
+    return true;
+}
+
+// =========================================
+// INITIALIZATION — CORRECTED
+// =========================================
+document.addEventListener("DOMContentLoaded", function() {
+    const dateSpan = document.getElementById("currentDate");
+    if (dateSpan) {
+        const now = new Date();
+        dateSpan.innerText = now.toLocaleDateString("en-ZA", { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    // Cash input event delegation
+    document.getElementById("cashTableBody")?.addEventListener("input", function(e) {
+        if (e.target.classList.contains("cash-input")) {
+            calculateCash();
+            calculateSortedBanking();
+            calculateMinisterFund();
+            calculateConclusion();
+        }
+    });
+
+    // Expense input event delegation
+    document.getElementById("expensesBody")?.addEventListener("input", function(e) {
+        if (e.target.classList.contains("expense-amount")) {
+            calculateExpenses();
+            calculateMinisterFund();
+            calculateConclusion();
+        }
+    });
+
+    document.getElementById("expensesBody")?.addEventListener("change", function(e) {
+    if (e.target.classList.contains("expense-type")) {
+        calculateExpenses();
+        //calculateMinisterFund();
+        //calculateConclusion();
+    }
+    });
+
+    // Cancelled receipts input event delegation
+    document.querySelector(".cancelled-table-body")?.addEventListener("input", function(e) {
+        if (e.target.classList.contains("manual-from") || e.target.classList.contains("manual-to")) {
+            calculateManualCancelledRow(e.target.closest("tr"));
+        }
+    });
+
+    // Form submission validation
+    document.getElementById("posForm")?.addEventListener("submit", function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    });
+
+    // Auto-populate first row for each product
+    ALL_PRODUCTS.forEach(product => {
+        const info = getNextBookletInfo(product);
+        if (info && info.from <= info.max) {
+            const tableBody = document.getElementById("serviceBody");
+            const template = document.querySelector(".template-row");
+            if (!tableBody || !template) return;
+
+            const newRow = template.cloneNode(true);
+            newRow.classList.remove("template-row");
+            newRow.classList.add("prefilled-row");
+            newRow.style.display = "table-row";
+            newRow.dataset.bookletIndex = info.index;
+
+            // Set product
+            const productHidden = newRow.querySelector(".product-hidden");
+            const productDisplay = newRow.querySelector(".product-display");
+            if (productHidden) {
+                productHidden.name = "product_name[]";
+                productHidden.value = product;
+            }
+            if (productDisplay) productDisplay.textContent = product;
+
+            // Build Type dropdown
+            const typeSelect = newRow.querySelector(".type-select");
+            if (typeSelect) {
+                typeSelect.name = "service_type[]";
+                buildTypeSelect(typeSelect, product, info.type, newRow);
+            }
+
+            // Set From (pre-filled, read-only for auto-populated)
+            const fromInput = newRow.querySelector(".from");
+            if (fromInput) {
+                fromInput.name = "from[]";
+                fromInput.value = info.from;
+                fromInput.readOnly = true;
+                fromInput.style.background = "rgba(200,200,200,0.3)";
+                fromInput.style.cursor = "not-allowed";
+                fromInput.addEventListener("input", function() {
+                    calculateRow(newRow);
+                    recalculateAll();
+                });
+            }
+
+            // Set To (user must enter)
+            const toInput = newRow.querySelector(".to");
+            if (toInput) {
+                toInput.name = "to[]";
+                toInput.placeholder = "Max: " + info.max;
+                toInput.dataset.maxReceipt = info.max;
+                toInput.dataset.product = product;
+                toInput.addEventListener("input", function() {
+                    calculateRow(newRow);
+                    recalculateAll();
+                });
+                toInput.addEventListener("blur", function() {
+                    validateToInput(this, newRow);
+                });
+            }
+
+            // Hide delete button for pre-filled rows
+            const deleteBtn = newRow.querySelector(".delete-btn");
+            if (deleteBtn) deleteBtn.style.display = "none";
+
+            // Reset calculated fields
+            newRow.querySelector(".stickers").innerText = "0";
+            newRow.querySelector(".banking").innerText = "R 0.00";
+            newRow.querySelector(".parish").innerText = "R 0.00";
+
+            tableBody.appendChild(newRow);
+        }
+    });
+
+    sortServiceRows();
+    recalculateAll();
+});
+</script>
+{% endblock %}

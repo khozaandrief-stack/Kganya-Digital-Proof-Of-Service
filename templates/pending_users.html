@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Users — KGANYA{% endblock %}
+
+{% block navbar %}
+<nav class="navbar">
+    <a href="/admin" class="navbar-brand">KGANYA</a>
+    <ul class="navbar-nav">
+        <li><a href="/admin">🏠 Dashboard</a></li>
+        <li><a href="/all-pos-files">📁 All POS Files</a></li>
+        <li><a href="/admin/pending-users">⏳ Pending Users</a></li>
+        <li><a href="/admin/create-user">➕ Create User</a></li>
+        {% if session.role == 'superadmin' %}
+        <li><a href="/manage-admins">👥 Manage Admins</a></li>
+        <li><a href="/manage-users">👤 Manage Users</a></li>
+        {% endif %}
+        <li><a href="/logout">🚪 Logout</a></li>
+    </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Pending User Approvals</h1>
+    <h3>Review and approve new user registrations</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">⏳ Pending Registrations</div>
+    {% if users %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Secretary Phone</th>
+                    <th>Secretary Email</th>
+                    <th>Vice-Secretary Phone</th>
+                    <th>Vice-Secretary Email</th>
+                    <th>Church Code</th>
+                    <th>Church File No.</th>
+                    <th>Church Branch</th>
+                    <th>Requested At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.secretary_phone or '—' }}</td>
+                    <td>{{ user.secretary_email or '—' }}</td>
+                    <td>{{ user.vice_secretary_phone or '—' }}</td>
+                    <td>{{ user.vice_secretary_email or '—' }}</td>
+                    <td>{{ user.church_code or '—' }}</td>
+                    <td>{{ user.church_file_number or '—' }}</td>
+                    <td>{{ user.church_branch_name or '—' }}</td>
+                    <td>{{ user.requested_at }}</td>
+                    <td><a href="/admin/approve-user/{{ user.id }}"><button style="margin-top:0; background-color: #28a745;">✓ Approve</button></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: white; text-align: center; padding: 40px;">No pending users. All registration requests have been processed.</p>
+    {% endif %}
+</div>
+{% endblock %}

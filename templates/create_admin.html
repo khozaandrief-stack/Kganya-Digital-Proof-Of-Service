@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Create Admin — KGANYA{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <h1>Create New Admin</h1>
+    <h3>Add a new administrator account</h3>
+
+    {% if error %}
+    <div class="flash-messages">
+        <div class="alert alert-error">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="flash-messages">
+        <div class="alert alert-success">{{ success }}</div>
+    </div>
+    {% endif %}
+
+    {% if info %}
+    <div class="flash-messages">
+        <div class="alert alert-info">{{ info }}</div>
+    </div>
+    {% endif %}
+
+    <div class="login-card" style="max-width: 500px; margin: 30px auto;">
+        
+        {% if step == "enter_details" %}
+        <!-- STEP 1: Enter username and email -->
+        <form method="POST" action="/create-admin" autocomplete="off" id="adminForm">
+            <input type="hidden" name="step" value="enter_details">
+
+            <!-- Invisible fake fields to catch autofill -->
+            <div style="position: absolute; left: -9999px; opacity: 0;">
+                <input type="text" name="username" autocomplete="username">
+                <input type="password" name="password" autocomplete="current-password">
+            </div>
+
+            <div class="form-group">
+                <label for="new_admin_username">Username</label>
+                <input type="text" id="new_admin_username" name="new_admin_username" class="form-control" 
+                       placeholder="Enter username" required
+                       value="{{ request.form.get('new_admin_username', '') }}"
+                       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                       data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+
+            <div class="form-group">
+                <label for="new_admin_email">Admin Email</label>
+                <input type="email" id="new_admin_email" name="new_admin_email" class="form-control"
+                       placeholder="admin@kganya.local" required
+                       value="{{ request.form.get('new_admin_email', '') }}"
+                       autocomplete="off" data-lpignore="true">
+                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 4px;">
+                    Login OTP will be sent to this email
+                </div>
+            </div>
+
+            <p style="color: #fcd34d; font-size: 14px; text-align: center; margin: 20px 0;">
+                🔒 A secure temporary password will be auto-generated and sent to the admin's email.<br>
+                The admin must change it within 24 hours.
+            </p>
+
+            <button type="submit" class="btn-primary">Send Verification OTP</button>
+            <a href="/manage-admins" style="display: block; text-align: center; margin-top: 15px;">
+                <button type="button" style="background-color: #6c757d;">Cancel</button>
+            </a>
+        </form>
+
+        {% elif step == "verify_otp" %}
+        <!-- STEP 2: Enter OTP -->
+        <form method="POST" action="/create-admin" autocomplete="off" id="otpForm">
+            <input type="hidden" name="step" value="verify_otp">
+            <input type="hidden" name="email" value="{{ email }}">
+            <input type="hidden" name="username" value="{{ username }}">
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text" value="{{ email }}" disabled class="form-control" style="background: rgba(255,255,255,0.6);">
+            </div>
+
+            <div class="form-group">
+                <label for="otp_code">Enter 6-Digit OTP</label>
+                <input type="text" id="otp_code" name="otp_code" class="form-control"
+                       maxlength="6" pattern="\d{6}" 
+                       value="000000"
+                       required
+                       style="text-align: center; letter-spacing: 12px; font-size: 1.8em; font-weight: bold;"
+                       autocomplete="off"
+                       onfocus="if(this.value==='000000') this.value='';"
+                       onblur="if(this.value==='') this.value='000000';">
+            </div>
+
+            <p style="color: #fcd34d; font-size: 14px; text-align: center; margin: 20px 0;">
+                Check your inbox and spam folder for the OTP code.
+            </p>
+
+            <button type="submit" class="btn-primary">Verify & Create Admin</button>
+            <a href="/create-admin" style="display: block; text-align: center; margin-top: 15px;">
+                <button type="button" style="background-color: #6c757d;">Cancel / Start Over</button>
+            </a>
+        </form>
+
+        {% elif step == "success" %}
+        <!-- STEP 3: Success -->
+        <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 3em; margin-bottom: 15px;">✅</div>
+            <p style="color: #d4e8d4; font-size: 1.1em; margin-bottom: 25px; line-height: 1.5;">
+                {{ success }}
+            </p>
+            <a href="/manage-admins">
+                <button type="button" class="btn-primary">Back to Manage Admins</button>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Clear any auto-filled values on page load
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var usernameField = document.getElementById('new_admin_username');
+        var emailField = document.getElementById('new_admin_email');
+        var otpField = document.getElementById('otp_code');
+
+        setTimeout(function() {
+            if (usernameField) usernameField.value = '';
+            if (emailField) emailField.value = '';
+        }, 100);
+
+        if (usernameField) {
+            usernameField.addEventListener('focus', function() {
+                if (this.value === 'superadmin') this.value = '';
+            });
+        }
+    });
+})();
+</script>
+
+<script>
+// Prevent double-submit on all forms
+document.querySelectorAll('form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        if (form.dataset.submitted === 'true') {
+            e.preventDefault();
+            return;
+        }
+        form.dataset.submitted = 'true';
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+        }
+    });
+});
+</script>
+{% endblock %}

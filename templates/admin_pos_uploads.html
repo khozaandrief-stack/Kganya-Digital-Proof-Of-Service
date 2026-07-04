@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}POS Uploads - KGANYA Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📁 POS #{{ pos_record.pos_number }} Uploads</h1>
+    <h2>{{ pos_record.church_name or pos_record.created_by }} — {{ pos_record.created_at }}</h2>
+
+    <div class="uploads-sections">
+        <!-- Current Uploads -->
+        <div class="section">
+            <h3>📌 Current Uploads</h3>
+            {% if current_uploads %}
+            <div class="uploads-grid">
+                {% for upload in current_uploads %}
+                <div class="upload-card {% if upload.upload_type == 'proof_of_banking' %}banking{% else %}receipts{% endif %}">
+                    <div class="upload-icon">
+                        {% if upload.upload_type == 'proof_of_banking' %}🏦{% else %}🧾{% endif %}
+                    </div>
+                    <div class="upload-info">
+                        <h4>{{ upload.upload_type.replace('_', ' ').title() }}</h4>
+                        <p class="filename" title="{{ upload.original_filename }}">{{ upload.original_filename }}</p>
+                        <p class="meta">{{ "%.1f"|format(upload.file_size / 1024) }} KB • {{ upload.uploaded_at }}</p>
+                    </div>
+                    <div class="upload-actions">
+                        <a href="/uploads/{{ upload.stored_filename }}" class="btn-view" target="_blank">👁 View</a>
+                        <a href="/uploads/{{ upload.stored_filename }}" class="btn-download" download>⬇ Download</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty">No uploads found for this POS.</p>
+            {% endif %}
+        </div>
+
+        <!-- Upload History -->
+        <div class="section">
+            <h3>📜 Upload History</h3>
+            {% if history %}
+            <div class="history-list">
+                {% for upload in history %}
+                <div class="history-item {% if upload.is_replaced %}replaced{% else %}current{% endif %}">
+                    <div class="history-icon">
+                        {% if upload.upload_type == 'proof_of_banking' %}🏦{% else %}🧾{% endif %}
+                    </div>
+                    <div class="history-info">
+                        <span class="history-type">{{ upload.upload_type.replace('_', ' ').title() }}</span>
+                        <span class="history-filename">{{ upload.original_filename }}</span>
+                        <span class="history-date">{{ upload.uploaded_at }}</span>
+                    </div>
+                    <div class="history-status">
+                        {% if upload.is_replaced %}
+                        <span class="badge replaced">🔄 Replaced</span>
+                        {% else %}
+                        <span class="badge current">✓ Current</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty">No upload history.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="actions-footer">
+        <a href="/admin/uploads" class="btn-back">← All Uploads</a>
+        <a href="/view-pos/{{ pos_record.id }}" class="btn-pos">📋 View POS</a>
+    </div>
+</div>
+
+<style>
+.uploads-sections {
+    margin: 30px 0;
+}
+.section {
+    margin-bottom: 40px;
+}
+.section h3 {
+    color: lightgoldenrodyellow;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+.uploads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+.upload-card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: all 0.3s;
+}
+.upload-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.upload-card.banking {
+    border-left: 4px solid #2196F3;
+}
+.upload-card.receipts {
+    border-left: 4px solid #4CAF50;
+}
+.upload-icon {
+    font-size: 2em;
+    text-align: center;
+}
+.upload-info h4 {
+    margin: 0 0 5px;
+    color: lightgoldenrodyellow;
+}
+.filename {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #ddd;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.meta {
+    color: #aaa;
+    font-size: 0.85em;
+    margin: 5px 0 0;
+}
+.upload-actions {
+    display: flex;
+    gap: 10px;
+}
+.btn-view, .btn-download {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    text-align: center;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+.btn-view {
+    background: #1e3a5f;
+    color: white;
+}
+.btn-download {
+    background: rgba(255,255,255,0.2);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+}
+.history-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+.history-item.current {
+    border-left-color: #4CAF50;
+}
+.history-item.replaced {
+    border-left-color: #FF9800;
+    opacity: 0.8;
+}
+.history-icon {
+    font-size: 1.5em;
+}
+.history-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.history-type {
+    font-weight: bold;
+    color: lightgoldenrodyellow;
+    font-size: 0.9em;
+}
+.history-filename {
+    font-family: monospace;
+    font-size: 0.85em;
+    color: #bbb;
+}
+.history-date {
+    font-size: 0.8em;
+    color: #888;
+}
+.badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+.badge.current {
+    background: rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+}
+.badge.replaced {
+    background: rgba(255, 152, 0, 0.3);
+    color: #FF9800;
+    border: 1px solid #FF9800;
+}
+.empty {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+    font-style: italic;
+}
+.actions-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+.actions-footer a {
+    padding: 10px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.btn-back {
+    background: rgba(255,255,255,0.1);
+    color: lightgoldenrodyellow;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-pos {
+    background: linear-gradient(135deg, #1e3a5f, #2a4a7a);
+    color: white;
+}
+h2 {
+    text-align: center;
+    color: #ccc;
+    font-size: 1.1em;
+    margin-top: -10px;
+    margin-bottom: 20px;
+}
+@media (max-width: 768px) {
+    .uploads-grid {
+        grid-template-columns: 1fr;
+    }
+    .history-item {
+        flex-wrap: wrap;
+    }
+    .actions-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
+{% endblock %}

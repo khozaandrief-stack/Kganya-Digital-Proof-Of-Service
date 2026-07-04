@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}Review Skipped Submissions — KGANYA{% endblock %}
+
+
+{% block extra_css %}
+<style>
+    .skip-container {
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    
+    .skip-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .skip-header h1 {
+        color: #ffeb3b;
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+    
+    .skip-header p {
+        color: rgba(255,255,255,0.7);
+        font-size: 16px;
+    }
+    
+    /* Stats Cards - matching admin dashboard style */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: rgba(0,0,0,0.35);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border-left: 4px solid;
+    }
+    
+    .stat-card.pending-card {
+        border-left-color: #ffc107;
+    }
+    
+    .stat-card.approved-card {
+        border-left-color: #28a745;
+    }
+    
+    .stat-card.rejected-card {
+        border-left-color: #dc3545;
+    }
+    
+    .stat-card.total-card {
+        border-left-color: #17a2b8;
+    }
+    
+    .stat-card .icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+    
+    .stat-card .number {
+        font-size: 36px;
+        font-weight: bold;
+        color: #fff;
+        margin-bottom: 5px;
+    }
+    
+    .stat-card.pending-card .number {
+        color: #ffc107;
+    }
+    
+    .stat-card.approved-card .number {
+        color: #28a745;
+    }
+    
+    .stat-card.rejected-card .number {
+        color: #dc3545;
+    }
+    
+    .stat-card.total-card .number {
+        color: #17a2b8;
+    }
+    
+    .stat-card .label {
+        color: rgba(255,255,255,0.7);
+        font-size: 14px;
+    }
+    
+    /* Table Section Cards */
+    .section-card {
+        background: rgba(0,0,0,0.3);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .section-header h2 {
+        color: #ffeb3b;
+        font-size: 20px;
+        margin: 0;
+    }
+    
+    .section-header .count-badge {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+    }
+    
+    /* Table Styling - matching admin dashboard */
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .data-table thead th {
+        background: rgba(0,0,0,0.5);
+        color: #ffeb3b;
+        padding: 14px 12px;
+        text-align: left;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(255,235,59,0.3);
+    }
+    
+    .data-table tbody td {
+        padding: 16px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        color: #fff;
+        font-size: 14px;
+        vertical-align: top;
+    }
+    
+    .data-table tbody tr:hover {
+        background: rgba(255,255,255,0.05);
+    }
+    
+    .data-table tbody tr.pending-row {
+        background: rgba(255, 193, 7, 0.08);
+        border-left: 3px solid #ffc107;
+    }
+    
+    .data-table tbody tr.approved-row {
+        background: rgba(40, 167, 69, 0.06);
+    }
+    
+    .data-table tbody tr.rejected-row {
+        background: rgba(220, 53, 69, 0.06);
+    }
+    
+    /* User cell */
+    .user-cell {
+        font-weight: 600;
+        color: #fff;
+    }
+    
+    .church-cell {
+        color: rgba(255,255,255,0.8);
+    }
+    
+    /* Date cell */
+    .date-cell {
+        color: rgba(255,255,255,0.7);
+        font-size: 13px;
+    }
+    
+    /* Reason Display */
+    .reason-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0,0,0,0.4);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        max-width: 260px;
+    }
+    
+    .reason-box .reason-icon {
+        font-size: 18px;
+    }
+    
+    .reason-box .reason-text {
+        color: #fff;
+        line-height: 1.4;
+    }
+    
+    /* Explanation Display */
+    .explanation-box {
+        background: rgba(255,255,255,0.1);
+        border-left: 3px solid #ffeb3b;
+        padding: 12px 14px;
+        border-radius: 0 8px 8px 0;
+        font-size: 13px;
+        color: rgba(255,255,255,0.9);
+        line-height: 1.5;
+        max-width: 300px;
+    }
+    
+    .explanation-box strong {
+        color: #ffeb3b;
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-pending {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+    
+    .status-approved {
+        background: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+    
+    .status-rejected {
+        background: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+    
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-action {
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    
+    .btn-approve {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-approve:hover {
+        background: #218838;
+    }
+    
+    .btn-reject {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .btn-reject:hover {
+        background: #c82333;
+    }
+    
+    /* Reviewed Info */
+    .reviewed-info {
+        font-size: 13px;
+        color: rgba(255,255,255,0.6);
+    }
+    
+    .reviewed-info strong {
+        color: rgba(255,255,255,0.8);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: rgba(255,255,255,0.5);
+    }
+    
+    .empty-state .icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+        color: rgba(255,255,255,0.7);
+        font-size: 22px;
+        margin-bottom: 10px;
+    }
+    
+    .empty-state p {
+        font-size: 15px;
+    }
+    
+    /* Flash Message */
+    .flash-message {
+        background: rgba(40, 167, 69, 0.15);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+        color: #28a745;
+        padding: 14px 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="skip-container">
+    <div class="skip-header">
+        <h1>⏸️ Review Skipped Submissions</h1>
+        <p>Users' explanations for missed Sunday submissions</p>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+        {% set pending_count = skipped|selectattr('status', 'equalto', 'pending')|list|length %}
+    {% set approved_count = skipped|selectattr('status', 'equalto', 'approved')|list|length %}
+    {% set rejected_count = skipped|selectattr('status', 'equalto', 'rejected')|list|length %}
+    
+    <!-- Summary Table -->
+    <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse; background: rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden;">
+        <thead>
+            <tr style="background: rgba(0,0,0,0.5);">
+                <th style="padding: 14px 20px; text-align: center; color: #ffc107; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid rgba(255,193,7,0.3);">⏳ Pending Review</th>
+                <th style="padding: 14px 20px; text-align: center; color: #28a745; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid rgba(40,167,69,0.3);">✅ Approved</th>
+                <th style="padding: 14px 20px; text-align: center; color: #dc3545; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid rgba(220,53,69,0.3);">❌ Rejected</th>
+                <th style="padding: 14px 20px; text-align: center; color: #17a2b8; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid rgba(23,162,184,0.3);">📊 Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 20px; text-align: center; font-size: 36px; font-weight: bold; color: #ffc107; background: rgba(255,193,7,0.08);">{{ pending_count }}</td>
+                <td style="padding: 20px; text-align: center; font-size: 36px; font-weight: bold; color: #28a745; background: rgba(40,167,69,0.08);">{{ approved_count }}</td>
+                <td style="padding: 20px; text-align: center; font-size: 36px; font-weight: bold; color: #dc3545; background: rgba(220,53,69,0.08);">{{ rejected_count }}</td>
+                <td style="padding: 20px; text-align: center; font-size: 36px; font-weight: bold; color: #17a2b8; background: rgba(23,162,184,0.08);">{{ skipped|length }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if skipped %}
+    <!-- Pending Section -->
+    {% if pending_count > 0 %}
+    <div class="section-card">
+        <div class="section-header">
+            <h2>⏳ Pending Review</h2>
+            <span class="count-badge">{{ pending_count }} records</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Church</th>
+                    <th>Expected Sunday</th>
+                    <th>Reason</th>
+                    <th>Explanation</th>
+                    <th>Submitted</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skip in skipped if skip.status == 'pending' %}
+                <tr class="pending-row">
+                    <td class="user-cell">{{ skip.username }}</td>
+                    <td class="church-cell">{{ skip.church_branch_name or '—' }}</td>
+                    <td class="date-cell">{{ skip.expected_sunday }}</td>
+                    <td>
+                        <div class="reason-box">
+                            <span class="reason-icon">
+                                {% if skip.reason == 'no_service' %}🚫{% else %}📝{% endif %}
+                            </span>
+                            <span class="reason-text">
+                                {% if skip.reason == 'no_service' %}
+                                    There was no church Service
+                                {% elif skip.reason == 'other' %}
+                                    Other
+                                {% else %}
+                                    {{ skip.reason or 'Not specified' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if skip.explanation %}
+                        <div class="explanation-box">
+                            <strong>Explanation</strong>
+                            <span style="color: #28a745; font-weight: bold;">{{ skip.explanation }}</span>
+                        </div>
+                        {% else %}
+                        <span style="color: rgba(255,255,255,0.4);">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="date-cell">
+                        {% if skip.submitted_at %}
+                            {{ skip.submitted_at }}
+                        {% else %}
+                            Auto-generated
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <form method="POST" action="/admin/approve-skip/{{ skip.id }}" style="display:inline;">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="btn-action btn-approve">✔ Approve</button>
+                            </form>
+                            <form method="POST" action="/admin/approve-skip/{{ skip.id }}" style="display:inline;">
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="btn-action btn-reject">✘ Reject</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    <!-- Approved Section -->
+    {% if approved_count > 0 %}
+    <div class="section-card">
+        <div class="section-header">
+            <h2>✅ Approved</h2>
+            <span class="count-badge">{{ approved_count }} records</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Church</th>
+                    <th>Expected Sunday</th>
+                    <th>Reason</th>
+                    <th>Explanation</th>
+                    <th>Status</th>
+                    <th>Reviewed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skip in skipped if skip.status == 'approved' %}
+                <tr class="approved-row">
+                    <td class="user-cell">{{ skip.username }}</td>
+                    <td class="church-cell">{{ skip.church_branch_name or '—' }}</td>
+                    <td class="date-cell">{{ skip.expected_sunday }}</td>
+                    <td>
+                        <div class="reason-box">
+                            <span class="reason-icon">
+                                {% if skip.reason == 'no_service' %}🚫{% else %}📝{% endif %}
+                            </span>
+                            <span class="reason-text">
+                                {% if skip.reason == 'no_service' %}
+                                    There was no church Service
+                                {% elif skip.reason == 'other' %}
+                                    Other
+                                {% else %}
+                                    {{ skip.reason or 'Not specified' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if skip.explanation %}
+                        <div class="explanation-box">
+                            <strong>Explanation</strong>
+                            {{ skip.explanation }}
+                        </div>
+                        {% else %}
+                        <span style="color: rgba(255,255,255,0.4);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge status-approved">✓ Approved</span>
+                    </td>
+                    <td class="reviewed-info">
+                        <strong>By:</strong> {{ skip.reviewed_by or '—' }}<br>
+                        <strong>At:</strong> {{ skip.reviewed_at or '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    <!-- Rejected Section -->
+    {% if rejected_count > 0 %}
+    <div class="section-card">
+        <div class="section-header">
+            <h2>❌ Rejected</h2>
+            <span class="count-badge">{{ rejected_count }} records</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Church</th>
+                    <th>Expected Sunday</th>
+                    <th>Reason</th>
+                    <th>Explanation</th>
+                    <th>Status</th>
+                    <th>Reviewed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skip in skipped if skip.status == 'rejected' %}
+                <tr class="rejected-row">
+                    <td class="user-cell">{{ skip.username }}</td>
+                    <td class="church-cell">{{ skip.church_branch_name or '—' }}</td>
+                    <td class="date-cell">{{ skip.expected_sunday }}</td>
+                    <td>
+                        <div class="reason-box">
+                            <span class="reason-icon">
+                                {% if skip.reason == 'no_service' %}🚫{% else %}📝{% endif %}
+                            </span>
+                            <span class="reason-text">
+                                {% if skip.reason == 'no_service' %}
+                                    There was no church Service
+                                {% elif skip.reason == 'other' %}
+                                    Other
+                                {% else %}
+                                    {{ skip.reason or 'Not specified' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if skip.explanation %}
+                        <div class="explanation-box">
+                            <strong>Explanation</strong>
+                            {{ skip.explanation }}
+                        </div>
+                        {% else %}
+                        <span style="color: rgba(255,255,255,0.4);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge status-rejected">✘ Rejected</span>
+                    </td>
+                    <td class="reviewed-info">
+                        <strong>By:</strong> {{ skip.reviewed_by or '—' }}<<br>
+                        <strong>At:</strong> {{ skip.reviewed_at or '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <h3>No Skipped Submissions to Review</h3>
+        <p>When users submit reasons for missing Sundays, they will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

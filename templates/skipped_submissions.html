@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Outstanding Submissions - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>⚠️ Outstanding Submissions</h1>
+    <p class="subtitle">You have {{ count }} missed Sunday submission(s) that need explanation.</p>
+    
+    <div class="alert alert-warning" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <strong>Your Create POS is temporarily locked.</strong> Please provide a reason for each missed Sunday below. An admin will review and unlock your account.
+    </div>
+
+    <form method="POST" action="/user/skipped-submissions" class="skipped-form">
+        {% for sunday in missed_sundays %}
+        <div class="skipped-box">
+            <h3>📅 Missed Sunday: {{ sunday.strftime('%B %d, %Y') }}</h3>
+            <div class="form-group">
+                <label>Reason for not submitting:</label>
+                <textarea name="reason_{{ sunday.strftime('%Y-%m-%d') }}" 
+                          placeholder="Please explain why you could not submit on this Sunday..." 
+                          required
+                          rows="4"></textarea>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <button type="submit" class="btn-submit">Submit for Admin Review</button>
+        <a href="/user" class="btn-cancel">← Back to Dashboard</a>
+    </form>
+</div>
+
+<style>
+.skipped-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+.skipped-box {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+}
+.skipped-box h3 {
+    color: #fbbf24;
+    margin-top: 0;
+    text-align: left;
+    font-size: 1.2em;
+}
+.skipped-box .form-group {
+    margin-top: 15px;
+}
+.skipped-box label {
+    display: block;
+    color: lightgoldenrodyellow;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.skipped-box textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2);
+    color: white;
+    font-family: "Century Gothic", sans-serif;
+    font-size: 1em;
+    resize: vertical;
+}
+.skipped-box textarea::placeholder {
+    color: #aaa;
+}
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #1e3a5f, #2a4a7a);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.btn-submit:hover {
+    background: linear-gradient(135deg, #2a4a7a, #3a5a8a);
+}
+.btn-cancel {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    color: #ccc;
+    text-decoration: none;
+}
+.btn-cancel:hover {
+    color: lightgoldenrodyellow;
+}
+</style>
+{% endblock %}

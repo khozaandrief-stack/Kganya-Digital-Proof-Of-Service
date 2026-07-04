@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ code }} — KGANYA{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card" style="text-align: center;">
+        <h1 style="font-size: 72px; color: lightgoldenrodyellow; margin-bottom: 10px;">⚠️</h1>
+        <h1 style="font-size: 48px; color: lightgoldenrodyellow; margin-bottom: 10px;">{{ code }}</h1>
+        <p style="color: white; font-size: 18px; margin-bottom: 30px;">{{ message }}</p>
+        <a href="/"><button>🏠 Go Home</button></a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard — KGANYA{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <h1>Admin Dashboard</h1>
+    <h3>Manage products, users, and view all POS records</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">➕ Add New Product</div>
+    <div class="login-card" style="max-width: 500px; margin: 20px auto 30px auto;">
+        <form method="POST" action="/add-product">
+            <div class="form-group">
+                <label for="name">Product Name</label>
+                <input type="text" id="name" name="name" class="form-control" placeholder="Enter product name" required>
+            </div>
+            <div class="contact-grid">
+                <div class="form-group">
+                    <label for="price">Price (R)</label>
+                    <input type="number" id="price" name="price" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="deduction">Deduction (R)</label>
+                    <input type="number" id="deduction" name="deduction" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 15px;">Add Product</button>
+        </form>
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">🏷️ Products</div>
+    {% if products %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Name</th><th>Price</th><th>Deduction</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.name }}</td>
+                    <td>R {{ "%.2f"|format(product.price) }}</td>
+                    <td>R {{ "%.2f"|format(product.deduction) }}</td>
+                    <td>
+                        <a href="/edit-product/{{ product.id }}"><button style="margin-top:0;">Edit</button></a>
+                        <form method="POST" action="/delete-product/{{ product.id }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete \'{{ product.name }}\'?');">
+                            <button type="submit" style="margin-top:0; background-color: #dc3545; margin-left: 5px;">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: white; text-align: center;">No products found.</p>
+    {% endif %}
+</div>
+{% endblock %}

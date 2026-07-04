@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+
+{% block title %}View POS #{{ record.pos_number }} — KGANYA{% endblock %}
+
+
+
+{% block extra_css %}
+<style>
+    .view-only input, .view-only select {
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        color: black !important;
+        font-family: "Century Gothic", sans-serif !important;
+        text-align: center !important;
+        cursor: default !important;
+        width: 90%;
+        padding: 5px;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    .view-only td {
+        background: rgba(255,255,255,0.15) !important;
+    }
+    /* Uploads Section Styles */
+    .uploads-section {
+        margin: 20px 0 30px;
+    }
+    .upload-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+    }
+    .upload-card {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 10px;
+        padding: 20px;
+        transition: all 0.3s;
+    }
+    .upload-card.has-file {
+        border-color: rgba(76, 175, 80, 0.5);
+        background: rgba(76, 175, 80, 0.05);
+    }
+    .upload-card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .upload-icon {
+        font-size: 1.5em;
+    }
+    .upload-title {
+        flex: 1;
+        font-weight: bold;
+        color: lightgoldenrodyellow;
+    }
+    .status-badge {
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    .status-badge.success {
+        background: rgba(76, 175, 80, 0.3);
+        color: #4CAF50;
+        border: 1px solid #4CAF50;
+    }
+    /* UPDATED: Blue oval background with red text for Pending */
+    .status-badge.pending {
+        background: linear-gradient(135deg, #1976D2, #0D47A1);
+        color: #FF5252;
+        border: 2px solid #FF5252;
+        box-shadow: 0 0 8px rgba(25, 118, 210, 0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+    .upload-details p {
+        margin: 5px 0;
+        color: #ddd;
+        font-size: 0.9em;
+    }
+    .upload-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .upload-actions a {
+        padding: 6px 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 0.85em;
+        transition: all 0.2s;
+    }
+    .btn-view-file {
+        background: #1e3a5f;
+        color: white;
+    }
+    .btn-download-file {
+        background: rgba(255,255,255,0.2);
+        color: lightgoldenrodyellow;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .no-upload {
+        color: #FF5252;
+        font-style: italic;
+        text-align: center;
+        padding: 15px 0;
+        font-weight: bold;
+    }
+    .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+    .action-buttons a button {
+        min-width: 140px;
+    }
+    .btn-upload-files {
+        background: linear-gradient(135deg, #1e3a5f, #2a4a7a);
+    }
+    .btn-upload-files:hover {
+        background: linear-gradient(135deg, #2a4a7a, #3a5a8a);
+    }
+    .btn-history {
+        background: rgba(156, 39, 176, 0.3);
+        border: 1px solid #9C27B0;
+    }
+    .btn-history:hover {
+        background: rgba(156, 39, 176, 0.5);
+    }
+    .btn-admin-uploads {
+        background: rgba(33, 150, 243, 0.3);
+        border: 1px solid #2196F3;
+    }
+    .btn-admin-uploads:hover {
+        background: rgba(33, 150, 243, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>KGANYA</h1>
+    <h2>LIGHTING THE WAY THROUGH SERVICE</h2>
+    <h3>Digital Proof Of Service</h3>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Church Information
+    </div>
+
+    <table>
+        <tr>
+            <th>Church Name</th>
+            <th>Church Code</th>
+            <th>Church File Number</th>
+        </tr>
+        <tr>
+            <td>{{ record.church_name or record.created_by|replace("_", " ") }}</td>
+            <td>{{ record.church_code or "—" }}</td>
+            <td>{{ record.church_file or "—" }}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>POS Number</th>
+            <th>Bank Sheet</th>
+            <th>Banking Date</th>
+        </tr>
+        <tr>
+            <td>{{ record.created_at }}</td>
+            <td><strong>{{ record.pos_number }}</strong></td>
+            <td>{{ record.bank_sheet or '-' }}</td>
+            <td>{{ record.banking_date or '-' }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Product Information & Prices
+    </div>
+
+    <table id="productTable">
+        <tr>
+            <th>Product Name</th>
+            <th>Type</th>
+            <th>Price (After Deduction)</th>
+            <th>Deduction</th>
+        </tr>
+        {% for product in products|sort(attribute='name') %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product_type_map.get(product.name, '') }}</td>
+            <td>R {{ "%.2f"|format(product.price) }}</td>
+            <td>R {{ "%.2f"|format(product.deduction) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Proof Of Service
+    </div>
+
+    <table class="view-only">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>No of Stickers</th>
+                <th>Banking Amount</th>
+                <th>Parish Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.product_type or "" }}</td>
+                <td>{{ item.sticker_from or 0 }}</td>
+                <td>{{ item.sticker_to or 0 }}</td>
+                <td>{{ item.sticker_count or 0 }}</td>
+                <td>R {{ "%.2f"|format(item.banking_amount or 0) }}</td>
+                <td>R {{ "%.2f"|format(item.parish_amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table>
+        <tr>
+            <th>Total Banking Amount</th>
+            <th>Total Parish Amount</th>
+            <th>Total Number Of Stickers</th>
+        </tr>
+        <tr>
+            <td>R {{ "%.2f"|format(record.total_banking or 0) }}</td>
+            <td>R {{ "%.2f"|format(record.total_parish or 0) }}</td>
+            <td>{{ record.total_stickers or 0 }}</td>
+        </tr>
+    </table>
+
+    {% if cancelled_receipts %}
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Cancelled Receipts
+    </div>
+
+    <table class="view-only">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>No Cancelled</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cr in cancelled_receipts %}
+            <tr>
+                <td>{{ cr.product_name }}</td>
+                <td>{{ cr.product_type or "" }}</td>
+                <td>{% if cr.sticker_from is not none %}{{ cr.sticker_from }}{% else %}—{% endif %}</td>
+                <td>{% if cr.sticker_to is not none %}{{ cr.sticker_to }}{% else %}—{% endif %}</td>
+                <td>{{ cr.sticker_count or 0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Depositor's Details
+    </div>
+
+    <table>
+        <tr>
+            <th>Name & Surname</th>
+            <th>ID Number</th>
+            <th>Cellphone</th>
+        </tr>
+        <tr>
+            <td>{{ record.depositor_name or "—" }}</td>
+            <td>{{ record.depositor_id or "—" }}</td>
+            <td>{{ record.depositor_phone or "—" }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Witnesses Details
+    </div>
+
+    <table>
+        <tr>
+            <th>Witness 1</th>
+            <th>Witness 2</th>
+            <th>Witness 3</th>
+        </tr>
+        <tr>
+            <td>{{ record.witness1 or "—" }}</td>
+            <td>{{ record.witness2 or "—" }}</td>
+            <td>{{ record.witness3 or "—" }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Cash Calculation
+    </div>
+
+    <table class="view-only">
+        <tr>
+            <th>R200</th><th>R100</th><th>R50</th><th>R20</th><th>R10</th><th>Coins</th>
+        </tr>
+        <tr>
+            <td>{{ cash_totals.r200 }}</td>
+            <td>{{ cash_totals.r100 }}</td>
+            <td>{{ cash_totals.r50 }}</td>
+            <td>{{ cash_totals.r20 }}</td>
+            <td>{{ cash_totals.r10 }}</td>
+            <td>{{ cash_totals.coins }}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr><th>Type</th><th>Count</th><th>Total</th></tr>
+        <tr><td>R200</td><td>{{ cash_totals.r200 }}</td><td>R {{ "%.2f"|format(cash_totals.r200 * 200) }}</td></tr>
+        <tr><td>R100</td><td>{{ cash_totals.r100 }}</td><td>R {{ "%.2f"|format(cash_totals.r100 * 100) }}</td></tr>
+        <tr><td>R50</td><td>{{ cash_totals.r50 }}</td><td>R {{ "%.2f"|format(cash_totals.r50 * 50) }}</td></tr>
+        <tr><td>R20</td><td>{{ cash_totals.r20 }}</td><td>R {{ "%.2f"|format(cash_totals.r20 * 20) }}</td></tr>
+        <tr><td>R10</td><td>{{ cash_totals.r10 }}</td><td>R {{ "%.2f"|format(cash_totals.r10 * 10) }}</td></tr>
+        <tr><td>Coins</td><td>{{ cash_totals.coins }}</td><td>R {{ "%.2f"|format(cash_totals.coins) }}</td></tr>
+        <tr style="font-weight:bold; font-size:18px;"><td colspan="2">Grand Total Cash</td><td>R {{ "%.2f"|format(record.grand_total_cash or 0) }}</td></tr>
+    </table>
+    
+        <div class="section-title" style="font-weight: bold; color: yellow;">
+        Sorted Banking Details
+    </div>
+
+    {% set bank200 = (record.bank_count200 or 0)|int %}
+    {% set bank100 = (record.bank_count100 or 0)|int %}
+    {% set bank50 = (record.bank_count50 or 0)|int %}
+    {% set bank20 = (record.bank_count20 or 0)|int %}
+    {% set bank10 = (record.bank_count10 or 0)|int %}
+    {% set bankCoins = (record.bank_count_coins or 0)|float %}
+    {% set has_bank_data = bank200 or bank100 or bank50 or bank20 or bank10 or bankCoins %}
+
+    {% if not has_bank_data and record.total_banking %}
+        {% set remaining = (record.total_banking or 0)|float %}
+        {% set bank200 = [cash_totals.r200|int, (remaining // 200)|int]|min %}
+        {% set remaining = remaining - bank200 * 200 %}
+        {% set bank100 = [cash_totals.r100|int, (remaining // 100)|int]|min %}
+        {% set remaining = remaining - bank100 * 100 %}
+        {% set bank50 = [cash_totals.r50|int, (remaining // 50)|int]|min %}
+        {% set remaining = remaining - bank50 * 50 %}
+        {% set bank20 = [cash_totals.r20|int, (remaining // 20)|int]|min %}
+        {% set remaining = remaining - bank20 * 20 %}
+        {% set bank10 = [cash_totals.r10|int, (remaining // 10)|int]|min %}
+        {% set remaining = remaining - bank10 * 10 %}
+        {% set bankCoins = [cash_totals.coins|float, remaining]|min %}
+    {% endif %}
+
+    <table class="view-only">
+        <tr>
+            <th>R200</th>
+            <th>R100</th>
+            <th>R50</th>
+            <th>R20</th>
+            <th>R10</th>
+            <th>Coins</th>
+        </tr>
+        <tr>
+            <td>{{ bank200 }}</td>
+            <td>{{ bank100 }}</td>
+            <td>{{ bank50 }}</td>
+            <td>{{ bank20 }}</td>
+            <td>{{ bank10 }}</td>
+            <td>{{ bankCoins|int if bankCoins == bankCoins|int else bankCoins }}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <th>Type</th>
+            <th>Count</th>
+            <th>Total</th>
+        </tr>
+        <tr><td>R200</td><td>{{ bank200 }}</td><td>R {{ "%.2f"|format(bank200 * 200) }}</td></tr>
+        <tr><td>R100</td><td>{{ bank100 }}</td><td>R {{ "%.2f"|format(bank100 * 100) }}</td></tr>
+        <tr><td>R50</td><td>{{ bank50 }}</td><td>R {{ "%.2f"|format(bank50 * 50) }}</td></tr>
+        <tr><td>R20</td><td>{{ bank20 }}</td><td>R {{ "%.2f"|format(bank20 * 20) }}</td></tr>
+        <tr><td>R10</td><td>{{ bank10 }}</td><td>R {{ "%.2f"|format(bank10 * 10) }}</td></tr>
+        <tr><td>Coins</td><td>{{ bankCoins|int if bankCoins == bankCoins|int else bankCoins }}</td><td>R {{ "%.2f"|format(bankCoins) }}</td></tr>
+        <tr style="font-weight:bold; font-size:18px;"><td colspan="2">Banking Total</td><td>R {{ "%.2f"|format(record.total_banking or 0) }}</td></tr>
+    </table>
+
+    {% if record.banking_amount_words %}
+    <table>
+        <tr><th>Amount in Words</th></tr>
+        <tr><td style="font-style: italic; text-align: left; padding: 10px;">{{ record.banking_amount_words }}</td></tr>
+    </table>
+    {% endif %}
+
+    {% if record.banking_remarks %}
+    <table>
+        <tr><th>Banking Remarks</th></tr>
+        <tr><td style="text-align: left; padding: 10px;">{{ record.banking_remarks }}</td></tr>
+    </table>
+    {% endif %}
+
+    
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Parish Expenses
+    </div>
+
+    {% if pos_expenses %}
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Expense Type</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Receipt</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in pos_expenses %}
+            <tr>
+                <td>{{ expense.expense_type }}</td>
+                <td>{{ expense.description or '-' }}</td>
+                <td>R {{ "%.2f"|format(expense.amount) }}</td>
+                <td>
+                    {% if expense.receipt_path %}
+                        <a href="{{ url_for('download_receipt', expense_id=expense.id) }}" target="_blank">📎 View Receipt</a>
+                    {% else %}
+                        <span style="color: #888;">No receipt</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not expense.receipt_path %}
+                    <form method="POST" action="{{ url_for('upload_expense_receipt', expense_id=expense.id) }}" enctype="multipart/form-data" style="display: inline;">
+                        <input type="file" name="receipt" accept=".pdf,.png,.jpg,.jpeg" required style="font-size: 12px; width: 150px;">
+                        <button type="submit" style="margin-top: 0; padding: 5px 10px; font-size: 12px;">Upload</button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('upload_expense_receipt', expense_id=expense.id) }}" enctype="multipart/form-data" style="display: inline;">
+                        <input type="file" name="receipt" accept=".pdf,.png,.jpg,.jpeg" required style="font-size: 12px; width: 150px;">
+                        <button type="submit" style="margin-top: 0; padding: 5px 10px; font-size: 12px;">Replace</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: white; text-align: center;">No expenses recorded for this POS.</p>
+    {% endif %}
+
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        Conclusion
+    </div>
+
+    <table>
+        <tr>
+            <th>Final Status</th>
+            <th>Expected Total</th>
+            <th>Grand Total Cash</th>
+        </tr>
+        <tr>
+            <td style="color: {{ 'green' if record.final_status == 'BALANCED' else 'red' }}; font-weight: bold;">
+                {{ record.final_status }}
+            </td>
+            <td>R {{ "%.2f"|format(record.expected_total or 0) }}</td>
+            <td>R {{ "%.2f"|format(record.grand_total_cash or 0) }}</td>
+        </tr>
+    </table>
+
+    <div style="font-size: 42px; font-weight: bold; text-align: center; padding: 20px; letter-spacing: 8px; color: {{ 'lightgoldenrodyellow' if record.final_status == 'BALANCED' else 'red' }};">
+        {% if record.final_status == 'BALANCED' %}
+            PULA!! &nbsp;&nbsp;&nbsp;&nbsp; PULA!! &nbsp;&nbsp;&nbsp;&nbsp; PULA!!
+        {% elif record.expected_total > record.grand_total_cash %}
+            ❌ Total Loss = R {{ "%.2f"|format((record.expected_total or 0) - (record.grand_total_cash or 0)) }}
+        {% else %}
+            ❌ Total Excess = R {{ "%.2f"|format((record.grand_total_cash or 0) - (record.expected_total or 0)) }}
+        {% endif %}
+    </div>
+
+    <!-- ==================== UPLOADS SECTION ==================== -->
+    <div class="section-title" style="font-weight: bold; color: yellow;">
+        📁 Supporting Documents
+    </div>
+    <div class="uploads-section">
+        <div class="upload-cards">
+            <!-- Proof of Banking Card -->
+            <div class="upload-card {% if banking_upload %}has-file{% endif %}">
+                <div class="upload-card-header">
+                    <span class="upload-icon">🏦</span>
+                    <span class="upload-title">Proof of Banking</span>
+                    {% if banking_upload %}
+                        <span class="status-badge success">✓ Uploaded</span>
+                    {% else %}
+                        <span class="status-badge pending">Pending</span>
+                    {% endif %}
+                </div>
+
+                {% if banking_upload %}
+                <div class="upload-details">
+                    <p><strong>File:</strong> {{ banking_upload.original_filename }}</p>
+                    <p><strong>Uploaded:</strong> {{ banking_upload.uploaded_at }}</p>
+                    <p><strong>Size:</strong> {{ "%.1f"|format(banking_upload.file_size / 1024) }} KB</p>
+                    <div class="upload-actions">
+                        <a href="/uploads/{{ banking_upload.stored_filename }}" class="btn-view-file" target="_blank">👁 View</a>
+                        <a href="/uploads/{{ banking_upload.stored_filename }}" class="btn-download-file" download>⬇ Download</a>
+                    </div>
+                </div>
+                {% else %}
+                <p class="no-upload">No proof of banking uploaded yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Receipts Card -->
+            <div class="upload-card {% if receipts_upload %}has-file{% endif %}">
+                <div class="upload-card-header">
+                    <span class="upload-icon">🧾</span>
+                    <span class="upload-title">Receipts</span>
+                    {% if receipts_upload %}
+                        <span class="status-badge success">✓ Uploaded</span>
+                    {% else %}
+                        <span class="status-badge pending">Pending</span>
+                    {% endif %}
+                </div>
+
+                {% if receipts_upload %}
+                <div class="upload-details">
+                    <p><strong>File:</strong> {{ receipts_upload.original_filename }}</p>
+                    <p><strong>Uploaded:</strong> {{ receipts_upload.uploaded_at }}</p>
+                    <p><strong>Size:</strong> {{ "%.1f"|format(receipts_upload.file_size / 1024) }} KB</p>
+                    <div class="upload-actions">
+                        <a href="/uploads/{{ receipts_upload.stored_filename }}" class="btn-view-file" target="_blank">👁 View</a>
+                        <a href="/uploads/{{ receipts_upload.stored_filename }}" class="btn-download-file" download>⬇ Download</a>
+                    </div>
+                </div>
+                {% else %}
+                <p class="no-upload">No receipts uploaded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="position: relative; height: 180px; overflow: hidden;">
+        <h3 style="position: relative; z-index: 2; color: lightgoldenrodyellow;">
+            Kganya Financial Service Providers | Lighting The Way Through Service
+        </h3>
+        <img src="{{ url_for('static', filename='Picture1.jpg') }}" style="position: absolute; bottom: 10px; right: 10px; width: 300px; height: auto; opacity: 0.35; border-radius: 12px; z-index: 1;">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="/my-pos-files"><button type="button">← Back to My Files</button></a>
+        <a href="/download-pos/{{ record.id }}"><button type="button">📥 Download</button></a>
+
+        {% if session.role == 'user' and record.created_by == session.username %}
+        <a href="/upload-pos-files/{{ record.id }}"><button type="button" class="btn-upload-files">📤 Upload Files</button></a>
+        <a href="/upload-history/{{ record.id }}"><button type="button" class="btn-history">📜 History</button></a>
+        {% endif %}
+
+        {% if session.role in ['admin', 'superadmin'] %}
+        <a href="/admin/pos-uploads/{{ record.id }}"><button type="button" class="btn-admin-uploads">📁 All Uploads</button></a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

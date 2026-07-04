@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users — KGANYA{% endblock %}
+
+{% block navbar %}
+<div class="navbar">
+    <a href="/admin" class="navbar-brand">KGANYA</a>
+    <ul class="navbar-nav">
+        <li><a href="/admin">📊 Dashboard</a></li>
+        <li><a href="/all-pos-files">📁 All POS Files</a></li>
+        <li><a href="/admin/pending-users">⏳ Pending Users</a></li>
+        <li><a href="/admin/create-user">➕ Create User</a></li>
+        {% if session.role == 'superadmin' %}
+        <li><a href="/manage-admins">👥 Manage Admins</a></li>
+        {% endif %}
+        <li><a href="/manage-users">👥 Manage Users</a></li>
+        <li><a href="/logout">🚪 Logout ({{ session.username }})</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Manage Users</h1>
+    <h3>View and manage all user accounts</h3>
+
+    {% if users %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Church Branch</th>
+                    <th>Church Code</th>
+                    <th>File Number</th>
+                    <th>Secretary Email</th>
+                    <th>Vice-Secretary Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.church_branch_name or '—' }}</td>
+                    <td>{{ user.church_code or '—' }}</td>
+                    <td>{{ user.church_file_number or '—' }}</td>
+                    <td>{{ user.secretary_email or '—' }}</td>
+                    <td>{{ user.vice_secretary_email or '—' }}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            <form action="/resend-reset-link" method="POST" style="display: inline;" onsubmit="return confirmResend('{{ user.username }}')">
+                                <input type="hidden" name="username" value="{{ user.username }}">
+                                <input type="hidden" name="email" value="{{ user.secretary_email or user.vice_secretary_email }}">
+                                <button type="submit" style="margin-top: 0; background: #17a2b8; font-size: 12px; padding: 6px 12px;" title="Send new password reset link">🔁 Reset Link</button>
+                            </form>
+                            {% if session.role == 'superadmin' %}
+                            <a href="/delete-user/{{ user.id }}" onclick="return confirm('Are you sure you want to delete user {{ user.username }}?')">
+                                <button type="button" class="delete-btn" style="margin-top: 0; font-size: 12px; padding: 6px 12px;">🗑 Delete</button>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: white; text-align: center; padding: 40px;">No users found in the system.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmResend(username) {
+    return confirm("Send a new password reset link to " + username + "?\nThe previous link will be invalidated.\nThe new link expires in 24 hours.");
+}
+</script>
+{% endblock %}

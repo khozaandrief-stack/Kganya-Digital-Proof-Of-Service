@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Detail #{{ log.id }} - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/superadmin">Superadmin</a></li>
+                    <li class="breadcrumb-item"><a href="/superadmin/audit-log">Audit Log</a></li>
+                    <li class="breadcrumb-item active">Record #{{ log.id }}</li>
+                </ol>
+            </nav>
+            <h1 class="display-5 fw-bold">
+                <i class="fas fa-file-alt me-2"></i>Audit Record #{{ log.id }}
+            </h1>
+        </div>
+    </div>
+
+    {% if log.tamper_alert %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>⚠️ TAMPER ALERT!</strong> The hash chain for this record does not match the previous record. This may indicate unauthorized modification.
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Main Details -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-info-circle me-2"></i>Event Details
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold" style="width: 200px;">Action:</td>
+                            <td><span class="badge bg-primary">{{ log.action }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Category:</td>
+                            <td>{{ log.action_category }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Timestamp:</td>
+                            <td><code>{{ log.timestamp }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Description:</td>
+                            <td>{{ log.description }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Username:</td>
+                            <td>
+                                {% if log.username %}
+                                <a href="/superadmin/audit-user-activity/{{ log.username }}">{{ log.username }}</a>
+                                {% else %}
+                                <span class="text-muted">Not authenticated</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">User Role:</td>
+                            <td><span class="badge bg-secondary">{{ log.user_role or '—' }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Superadmin Action:</td>
+                            <td>{% if log.is_superadmin_action %}<span class="badge bg-dark">Yes</span>{% else %}<span class="badge bg-light text-dark">No</span>{% endif %}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Login Specific Details -->
+            {% if log.action_category == 'authentication' %}
+            <div class="card mb-4 border-{% if log.login_success %}success{% else %}danger{% endif %}">
+                <div class="card-header bg-{% if log.login_success %}success{% else %}danger{% endif %} text-white">
+                    <i class="fas fa-{% if log.login_success %}check-circle{% else %}times-circle{% endif %} me-2"></i>
+                    Login Attempt Details
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold" style="width: 200px;">Username Entered:</td>
+                            <td><code>{{ log.username_entered or '—' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Password Hash:</td>
+                            <td><code class="text-muted">{{ log.password_entered_hash or '—' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Login Success:</td>
+                            <td>
+                                {% if log.login_success %}
+                                <span class="badge bg-success">SUCCESS</span>
+                                {% else %}
+                                <span class="badge bg-danger">FAILED</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Failure Reason:</td>
+                            <td class="{% if not log.login_success %}text-danger{% endif %}">{{ log.failure_reason or '—' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Data Change Details -->
+            {% if log.old_values or log.new_values %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-exchange-alt me-2"></i>Data Changes
+                </div>
+                <div class="card-body">
+                    {% if log.old_values %}
+                    <h6 class="text-danger">Old Values:</h6>
+                    <pre class="bg-light p-3 rounded"><code>{{ log.old_values | tojson(indent=2) }}</code></pre>
+                    {% endif %}
+                    {% if log.new_values %}
+                    <h6 class="text-success">New Values:</h6>
+                    <pre class="bg-light p-3 rounded"><code>{{ log.new_values | tojson(indent=2) }}</code></pre>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <!-- Device & Location -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-laptop me-2"></i>Device & Location
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="fw-bold">IP Address:</td>
+                            <td><code>{{ log.ip_address or '—' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Location:</td>
+                            <td>{{ log.location or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Session ID:</td>
+                            <td><code class="text-muted">{{ log.session_id or '—' }}</code></td>
+                        </tr>
+                    </table>
+
+                    {% if log.device_info %}
+                    <hr>
+                    <h6>Device Information:</h6>
+                    <table class="table table-sm">
+                        <tr><td>Platform</td><td>{{ log.device_info.platform or '—' }}</td></tr>
+                        <tr><td>OS</td><td>{{ log.device_info.os or '—' }}</td></tr>
+                        <tr><td>Browser</td><td>{{ log.device_info.browser or '—' }}</td></tr>
+                        <tr><td>Type</td><td>{{ log.device_info.device_type or '—' }}</td></tr>
+                        <tr><td>Hostname</td><td>{{ log.device_info.hostname or '—' }}</td></tr>
+                    </table>
+                    <small class="text-muted">Raw UA:</small>
+                    <code class="small d-block text-truncate">{{ log.device_info.raw_user_agent or '—' }}</code>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Hash Chain -->
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <i class="fas fa-link me-2"></i>Hash Chain
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Previous Hash</label>
+                        <code class="d-block small text-truncate">{{ log.previous_record_hash or '0' }}</code>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Record Hash</label>
+                        <code class="d-block small text-truncate">{{ log.record_hash or '—' }}</code>
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        This hash chain ensures tamper evidence. Any modification breaks the chain.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Records -->
+            {% if log.table_affected or log.record_id %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <i class="fas fa-database me-2"></i>Affected Record
+                </div>
+                <div class="card-body">
+                    <p><strong>Table:</strong> {{ log.table_affected or '—' }}</p>
+                    <p><strong>Record ID:</strong> {{ log.record_id or '—' }}</p>
+                    {% if log.pos_record_id %}
+                    <p><strong>POS Record:</strong> <a href="/view-pos/{{ log.pos_record_id }}">#{{ log.pos_record_id }}</a></p>
+                    {% endif %}
+                    {% if log.amount %}
+                    <p><strong>Amount:</strong> R {{ "%.2f" | format(log.amount) }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Create Admin — KGANYA{% endblock %}
+
+{% block navbar %}
+<<nav class="navbar">
+    <a href="/admin" class="navbar-brand">KGANYA</a>
+    <ul class="navbar-nav">
+        <li><a href="/admin">🏠 Dashboard</a></li>
+        <li><a href="/all-pos-files">📁 All POS Files</a></li>
+        <li><a href="/admin/pending-users">⏳ Pending Users</a></li>
+        <li><a href="/admin/create-user">➕ Create User</a></li>
+        {% if session.role == 'superadmin' %}
+        <li><a href="/manage-admins">👥 Manage Admins</a></li>
+        {% endif %}
+        <li><a href="/manage-users">👤 Manage Users</a></li>
+        <li><a href="/logout">🚪 Logout</a></li>
+    </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Create New Admin</h1>
+    <h3>Add a new administrator account</h3>
+
+    {% if error %}
+    <div class="flash-messages">
+        <div class="alert alert-error">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="flash-messages">
+        <div class="alert alert-success">{{ success }}</div>
+    </div>
+    {% endif %}
+
+    <div class="login-card" style="max-width: 500px; margin: 30px auto;">
+        <!-- Randomized form action to break password manager URL matching -->
+        <form method="POST" action="/create-admin" autocomplete="off" id="adminForm">
+
+            <!-- Invisible fake fields positioned absolutely to catch autofill -->
+            <div style="position: absolute; left: -9999px; opacity: 0;">
+                <input type="text" name="username" autocomplete="username">
+                <input type="password" name="password" autocomplete="current-password">
+            </div>
+
+            <div class="form-group">
+                <label for="new_admin_username">Username</label>
+                <!-- Use readonly initially, then remove via JS -->
+                <input type="text" id="new_admin_username" name="new_admin_username" class="form-control" 
+                       placeholder="Enter username" required
+                       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                       data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+
+            <div class="form-group">
+                <label for="new_admin_email">Admin Email</label>
+                <input type="email" id="new_admin_email" name="new_admin_email" class="form-control"
+                       placeholder="admin@kganya.local" required
+                       autocomplete="off" data-lpignore="true">
+                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 4px;">
+                    Login OTP will be sent to this email
+                </div>
+            </div>
+
+            <p style="color: #fcd34d; font-size: 14px; text-align: center; margin: 20px 0;">
+                🔒 A secure temporary password will be auto-generated and sent to the admin's email.<br>
+                The admin must change it within 24 hours.
+            </p>
+
+            <button type="submit" class="btn-primary">Create Admin</button>
+            <a href="/manage-admins" style="display: block; text-align: center; margin-top: 15px;">
+                <button type="button" style="background-color: #6c757d;">Cancel</button>
+            </a>
+        </form>
+    </div>
+
+    <!-- ─── EXISTING ADMINS TABLE ─── -->
+    <div style="max-width: 900px; margin: 50px auto 30px;">
+        <h2 style="text-align: center; margin-bottom: 25px; color: rgba(255,255,255,0.9);">Existing Administrators</h2>
+        
+        {% if admins %}
+        <div class="table-responsive" style="background: rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15);">
+            <table style="width: 100%; border-collapse: collapse; color: white; font-size: 14px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid rgba(255,255,255,0.2);">
+                        <th style="text-align: left; padding: 12px 15px;">#</th>
+                        <th style="text-align: left; padding: 12px 15px;">Username</th>
+                        <th style="text-align: left; padding: 12px 15px;">Role</th>
+                        <th style="text-align: left; padding: 12px 15px;">Email</th>
+                        <th style="text-align: center; padding: 12px 15px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for admin in admins %}
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <td style="padding: 12px 15px;">{{ loop.index }}</td>
+                        <td style="padding: 12px 15px; font-weight: 600;">{{ admin.username }}</td>
+                        <td style="padding: 12px 15px;">
+                            <span style="background: rgba(46,204,113,0.3); color: #2ecc71; padding: 4px 10px; border-radius: 12px; font-size: 12px; text-transform: uppercase;">
+                                {{ admin.role }}
+                            </span>
+                        </td>
+                        <td style="padding: 12px 15px;">{{ admin.email or '—' }}</td>
+                        <td style="padding: 12px 15px; text-align: center;">
+                            <a href="/delete-admin/{{ admin.username }}" 
+                               onclick="return confirm('Delete admin \'{{ admin.username }}\'? This cannot be undone.')"
+                               style="color: #e74c3c; text-decoration: none; font-size: 12px;">
+                                🗑️ Delete
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="text-align: center; color: rgba(255,255,255,0.6); padding: 30px;">
+            No administrators found.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Clear any auto-filled values on page load
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var usernameField = document.getElementById('new_admin_username');
+        var emailField = document.getElementById('new_admin_email');
+
+        // Clear after a short delay to beat the password manager
+        setTimeout(function() {
+            if (usernameField) usernameField.value = '';
+            if (emailField) emailField.value = '';
+        }, 100);
+
+        // Also clear on focus
+        usernameField.addEventListener('focus', function() {
+            if (this.value === 'superadmin') this.value = '';
+        });
+    });
+})();
+</script>
+{% endblock %}

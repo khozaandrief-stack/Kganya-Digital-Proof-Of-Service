@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+
+    <style>
+    html {
+        min-height: 100%;
+    }
+
+    body {
+        font-family: "Century Gothic", sans-serif;
+        margin: 0;
+        padding: 20px;
+
+        background-image:
+        linear-gradient(
+            rgba(255,255,255,0.35),
+            rgba(255,255,255,0.35)
+        ),
+        url("{{ url_for('static', filename='Picture1.jpg') }}");
+
+        background-size: 100% auto;
+        background-position: center top;
+        background-repeat: repeat-y;
+        background-attachment: scroll;
+        min-height: 100vh;
+    }
+
+    .container {
+        max-width: 1300px;
+        margin: auto;
+        background: rgba(255,255,255,0.18);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        padding: 25px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.35);
+        box-shadow:
+            0 8px 30px rgba(0,0,0,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+
+    h1, h2, h3 {
+        text-align: center;
+        color: lightgoldenrodyellow;
+        font-weight: bold;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    table, th, td {
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    th {
+        background: rgba(0,0,0,0.45);
+        padding: 10px;
+        font-weight: bold;
+        color: lightgoldenrodyellow;
+    }
+
+    td {
+        padding: 8px;
+        text-align: center;
+        background: rgba(255,255,255,0.15);
+        color: black;
+    }
+
+    input {
+        width: 90%;
+        padding: 5px;
+    }
+
+    .sleep-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: black;
+        cursor: pointer;
+    }
+
+    .sleep-overlay.hidden {
+        display: none;
+    }
+
+    .sleep-overlay .slide {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: 0;
+        transition: opacity 1s;
+    }
+
+    .sleep-overlay .slide.active {
+        opacity: 1;
+    }
+
+    .sleep-message {
+        position: absolute;
+        bottom: 40px;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+        z-index: 2;
+    }
+
+
+    /* =========================================
+       READ-ONLY / PRE-FILLED CELLS - SCOPED TO POS FORM ONLY
+       ========================================= */
+    #posForm input[readonly],
+    #posForm input:read-only,
+    .service-table input[readonly],
+    .service-table input:read-only,
+    #productTable input[readonly],
+    #productTable input:read-only {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        cursor: default !important;
+        color: black !important;
+        font-family: "Century Gothic", sans-serif !important;
+        font-size: inherit !important;
+        text-align: center !important;
+        width: 90%;
+        padding: 5px;
+    }
+
+    #posForm td:has(> input[readonly]),
+    #posForm td:has(> input:read-only),
+    .service-table td:has(> input[readonly]),
+    .service-table td:has(> input:read-only),
+    #productTable td:has(> input[readonly]),
+    #productTable td:has(> input:read-only) {
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        background: rgba(255,255,255,0.15) !important;
+    }
+
+    .type-cell input,
+    .type-cell input[readonly],
+    .type-input,
+    .type-input[readonly] {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        cursor: default !important;
+        color: black !important;
+        font-family: "Century Gothic", sans-serif !important;
+        font-size: inherit !important;
+        text-align: center !important;
+    }
+
+    #productTable td input[readonly] {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        cursor: default !important;
+        color: black !important;
+        text-align: center !important;
+    }
+
+    .stickers,
+    .banking,
+    .parish,
+    td.stickers,
+    td.banking,
+    td.parish {
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        background: rgba(255,255,255,0.15) !important;
+    }
+
+    .section-title {
+        background: rgba(0,0,0,0.45);
+        color: white;
+        padding: 10px;
+        margin-top: 30px;
+        border-radius: 5px;
+    }
+
+    .summary {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .card {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(6px);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    button {
+        background-color: #1e3a5f;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #162b46;
+    }
+
+    /* =========================================
+       NAVBAR
+       ========================================= */
+    .navbar {
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.2);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .navbar-brand {
+        color: lightgoldenrodyellow;
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 3px;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .navbar-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        justify-content: flex-end;
+        max-width: 85%;
+    }
+
+    .navbar-nav li {
+        display: inline-block;
+    }
+
+    .navbar-nav a {
+        color: white;
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        background: rgba(30, 58, 95, 0.7);
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        display: inline-block;
+        letter-spacing: 0.5px;
+    }
+
+    .navbar-nav a:hover {
+        background: rgba(30, 58, 95, 0.9);
+        transform: translateY(-1px);
+    }
+
+    /* =========================================
+       LOGIN / REGISTER CENTERED CARD
+       ========================================= */
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-card {
+        max-width: 450px;
+        width: 100%;
+        margin: auto;
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(8px);
+        padding: 40px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.3);
+        box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+    }
+
+    .login-logo {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .login-logo h1 {
+        color: lightgoldenrodyellow;
+        font-size: 36px;
+        font-weight: bold;
+        letter-spacing: 4px;
+    }
+
+    .login-logo h2 {
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        margin-top: 4px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: white;
+        font-weight: bold;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 5px;
+        font-size: 15px;
+        background: rgba(255,255,255,0.2);
+        color: black;
+        font-family: "Century Gothic", sans-serif;
+    }
+
+    .form-control::placeholder {
+        color: rgba(0,0,0,0.5);
+    }
+
+    .btn-primary {
+        background-color: #1e3a5f;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: bold;
+        width: 100%;
+        font-family: "Century Gothic", sans-serif;
+    }
+
+    .btn-primary:hover {
+        background-color: #162b46;
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 20px;
+        color: white;
+        font-size: 14px;
+    }
+
+    .login-link a {
+        color: lightgoldenrodyellow;
+        font-weight: bold;
+        text-decoration: none;
+    }
+
+    .login-link a:hover {
+        text-decoration: underline;
+    }
+
+    /* =========================================
+       FLASH MESSAGES
+       ========================================= */
+    .flash-messages {
+        margin-bottom: 20px;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .alert-success {
+        background: rgba(212, 237, 218, 0.95);
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error, .alert-danger {
+        background: rgba(248, 215, 218, 0.95);
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-info {
+        background: rgba(209, 236, 241, 0.95);
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
+    /* =========================================
+       CONTENT WRAPPER
+       ========================================= */
+    .content-wrapper {
+        max-width: 1200px;
+        margin: auto;
+    }
+
+    .page-title {
+        text-align: center;
+        color: lightgoldenrodyellow;
+        font-weight: bold;
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+        text-align: center;
+        color: white;
+        font-size: 15px;
+        margin-bottom: 20px;
+    }
+
+    /* =========================================
+       TABLE CONTAINER FOR SCROLLING
+       ========================================= */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    /* =========================================
+       RESPONSIVE
+       ========================================= */
+    @media (max-width: 768px) {
+        .navbar {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .navbar-nav {
+            justify-content: flex-start;
+            max-width: 100%;
+            width: 100%;
+        }
+        .navbar-nav a {
+            font-size: 11px;
+            padding: 5px 8px;
+        }
+        .login-card {
+            padding: 25px;
+            margin: 10px;
+        }
+        .summary {
+            grid-template-columns: 1fr;
+        }
+    }
+    /* =========================================
+       PAGE LOADER — Black Circular Spinner
+       ========================================= */
+    #pageLoader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(30, 58, 95, 0.95);
+        z-index: 99999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        transition: opacity 0.6s ease-out, visibility 0.6s ease-out;
+    }
+
+    #pageLoader.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .loader-ring {
+        width: 80px;
+        height: 80px;
+        position: relative;
+    }
+
+    .loader-ring svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+
+    .loader-ring circle {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+    }
+
+    .loader-ring .track {
+        stroke: rgba(255, 255, 255, 0.15);
+    }
+
+    .loader-ring .arc {
+        stroke: #000000;
+        stroke-dasharray: 188.5;
+        stroke-dashoffset: 188.5;
+        animation: loaderSpin 1.5s linear infinite, loaderDash 1.5s ease-in-out infinite;
+        transform-origin: center;
+    }
+
+    @keyframes loaderSpin {
+        0%   { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes loaderDash {
+        0%   { stroke-dashoffset: 188.5; }
+        50%  { stroke-dashoffset: 47.1; }
+        100% { stroke-dashoffset: 188.5; }
+    }
+
+    .loader-text {
+        margin-top: 24px;
+        color: lightgoldenrodyellow;
+        font-family: "Century Gothic", sans-serif;
+        font-size: 16px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        animation: loaderPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes loaderPulse {
+        0%, 100% { opacity: 0.6; }
+        50%      { opacity: 1; }
+    }
+
+    .loader-brand {
+        margin-top: 8px;
+        color: rgba(255, 255, 255, 0.5);
+        font-family: "Century Gothic", sans-serif;
+        font-size: 12px;
+        letter-spacing: 2px;
+    }
+
+    </style>
+
+    {% block extra_css %}{% endblock %}
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<base target="_self">
+</head>
+<body>
+    <!-- =========================================
+     PAGE LOADER — Black Circular Spinner
+     ========================================= -->
+    <div id="pageLoader">
+        <div class="loader-ring">
+            <svg viewBox="0 0 80 80">
+                <circle class="track" cx="40" cy="40" r="30"></circle>
+                <circle class="arc" cx="40" cy="40" r="30"></circle>
+            </svg>
+        </div>
+        <div class="loader-text">Loading</div>
+        <div class="loader-brand">KGANYA</div>
+    </div>
+
+    <!-- NAVBAR BLOCK FOR LOGGED-IN PAGES -->
+    <!-- In base.html, replace the current navbar block with this: -->
+
+{% block navbar %}
+{% if session.username %}
+<nav class="navbar">
+    {% if session.role == "admin" or session.role == "superadmin" %}
+        <a href="/admin" class="navbar-brand">KGANYA</a>
+        <ul class="navbar-nav">
+            <li><a href="/admin">📊 Dashboard</a></li>
+            <li><a href="/all-pos-files">📁 All POS Files</a></li>
+            <li><a href="/admin/pending-users">⏳ Pending Users</a></li>
+            <li><a href="/admin/create-user">➕ Create User</a></li>
+            <li><a href="/manage-users">👤 Manage Users</a></li>
+            <li><a href="/admin/booklets">📚 Booklets</a></li>
+            <li><a href="/admin/products">🏷️ Products</a></li>
+            <li><a href="/admin/dashboard">📊 Submissions Dashboard</a></li>
+            <li><a href="/admin/skipped-submissions">⏸️ Skipped Submissions</a></li>
+            {% if session.role == "superadmin" %}
+                <li><a href="/superadmin">⚙️ Superadmin</a></li>
+                <li><a href="/admin/pending-users">⏳ Pending Users</a></li>
+                <li><a href="/manage-admins">👔 Admins</a></li>
+                <li><a href="/create-admin">➕ Add Admin</a></li>
+                <li><a href="/superadmin/audit-log">🛡️ Audit</a></li>
+            {% endif %}
+            <li><a href="/logout">🚪 Logout ({{ session.username }})</a></li>
+        </ul>
+    {% else %}
+        <a href="/user" class="navbar-brand">KGANYA</a>
+        <ul class="navbar-nav">
+            <li><a href="/user">📊 Dashboard</a></li>
+            <li><a href="/user/booklets">📚 My Booklets</a></li>
+            <li><a href="/create-pos">📋 Create POS</a></li>
+            <li><a href="/my-pos-files">📁 My POS Files</a></li>
+            <li><a href="/user/skipped-submissions">⏸️ Skipped</a></li>
+            <li><a href="/logout">🚪 Logout ({{ session.username }})</a></li>
+        </ul>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
+
+
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <!-- FORCE ALL NAVIGATION TO STAY IN SAME TAB -->
+    <script>
+    (function() {
+        document.querySelectorAll('a[target="_blank"], a[target="_new"]').forEach(function(el) {
+            el.removeAttribute('target');
+        });
+
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a');
+            if (!link) return;
+
+            if (e.ctrlKey || e.metaKey || e.button === 1 || e.button === 2) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = link.href;
+                return false;
+            }
+
+            if (link.target && link.target !== '_self') {
+                link.target = '_self';
+            }
+        }, true);
+
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            if (form.target && form.target !== '_self') {
+                form.target = '_self';
+            }
+        }, true);
+    })();
+    </script>
+
+
+
+    <div id="sleepOverlay" class="sleep-overlay hidden">
+
+        <div class="slide active"
+             style="background-image:url('{{ url_for('static', filename='Picture2.jpg') }}')">
+        </div>
+
+        <div class="slide"
+             style="background-image:url('{{ url_for('static', filename='Picture3.jpeg') }}')">
+        </div>
+
+        <div class="slide"
+             style="background-image:url('{{ url_for('static', filename='Picture4.jpg') }}')">
+        </div>
+
+        <div class="sleep-message">
+            Tap anywhere to continue
+        </div>
+
+    </div>
+
+    <script>
+
+(function(){
+    if (window.location.pathname === "/login") {
+        return;
+    }
+
+    const overlay = document.getElementById('sleepOverlay');
+
+    const slides = overlay.querySelectorAll('.slide');
+
+    let inactivityTimer;
+
+    let currentSlide = 0;
+
+    const INACTIVITY_LIMIT = 120000; // 2 minutes
+
+    function showSleepScreen() {
+
+        overlay.classList.remove('hidden');
+
+        startSlider();
+    }
+
+    function hideSleepScreen() {
+
+        overlay.classList.add('hidden');
+
+        stopSlider();
+
+        resetInactivityTimer();
+    }
+
+    function resetInactivityTimer() {
+
+        clearTimeout(inactivityTimer);
+
+        inactivityTimer = setTimeout(showSleepScreen, INACTIVITY_LIMIT);
+    }
+
+    function showSlide(index) {
+
+        slides.forEach((slide,i)=>{
+            slide.classList.toggle('active', i === index);
+        });
+
+        currentSlide = index;
+    }
+
+    function nextSlide() {
+
+        showSlide((currentSlide + 1) % slides.length);
+    }
+
+    let sliderInterval;
+
+    function startSlider() {
+
+        clearInterval(sliderInterval);
+
+        sliderInterval = setInterval(nextSlide, 4000);
+    }
+
+    function stopSlider() {
+
+        clearInterval(sliderInterval);
+    }
+
+    document.addEventListener('click', resetInactivityTimer);
+
+    document.addEventListener('touchstart', resetInactivityTimer);
+
+    document.addEventListener('keydown', resetInactivityTimer);
+
+    overlay.addEventListener('click', hideSleepScreen);
+
+    overlay.addEventListener('touchstart', function(e){
+
+        e.preventDefault();
+
+        hideSleepScreen();
+
+    });
+
+    resetInactivityTimer();
+
+})();
+
+    
+
+</script>
+
+    {% block extra_js %}{% endblock %}
+
+<!-- =========================================
+     PAGE LOADER SCRIPT
+     ========================================= -->
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            var loader = document.getElementById('pageLoader');
+            if (loader) loader.classList.add('hidden');
+        }, 500);
+    });
+
+    // Fallback: hide after 10 seconds max
+    setTimeout(function() {
+        var loader = document.getElementById('pageLoader');
+        if (loader && !loader.classList.contains('hidden')) {
+            loader.classList.add('hidden');
+        }
+    }, 10000);
+</script>
+
+</body>
+</html>

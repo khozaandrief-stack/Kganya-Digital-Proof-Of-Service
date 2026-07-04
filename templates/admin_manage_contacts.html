@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Church Contacts — KGANYA{% endblock %}
+
+
+
+{% block extra_css %}
+<style>
+    .contacts-container {
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    
+    .contacts-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .contacts-header h1 {
+        color: #ffeb3b;
+        font-size: 28px;
+    }
+    
+    .contacts-header p {
+        color: rgba(255,255,255,0.7);
+    }
+    
+    .user-card {
+        background: rgba(0,0,0,0.3);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        border-left: 4px solid #1e3a5f;
+    }
+    
+    .user-card:hover {
+        background: rgba(0,0,0,0.4);
+    }
+    
+    .user-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .user-name {
+        font-size: 20px;
+        font-weight: bold;
+        color: #fff;
+    }
+    
+    .user-church {
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+    }
+    
+    .contact-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .contact-field {
+        background: rgba(255,255,255,0.05);
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    .contact-field label {
+        display: block;
+        color: #ffeb3b;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    
+    .contact-field input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        background: rgba(0,0,0,0.3);
+        color: #fff;
+        font-size: 14px;
+    }
+    
+    .contact-field input::placeholder {
+        color: rgba(255,255,255,0.3);
+    }
+    
+    .contact-field .current-value {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 6px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .contact-field .current-value.empty {
+        color: rgba(255,255,255,0.3);
+        font-style: italic;
+    }
+    
+    .btn-update {
+        background: #1e3a5f;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    
+    .btn-update:hover {
+        background: #162b46;
+    }
+    
+    .section-title-small {
+        color: #ffeb3b;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="contacts-container">
+    <div class="contacts-header">
+        <h1>📇 Manage Church Contacts</h1>
+        <p>Update secretary and vice-secretary email addresses and phone numbers for any church.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" style="margin-bottom: 20px; text-align: center;">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% for user in users %}
+    <div class="user-card">
+        <div class="user-header">
+            <div>
+                <div class="user-name">{{ user.church_branch_name or user.username }}</div>
+                <div class="user-church">Username: {{ user.username }} | Code: {{ user.church_code or '—' }}</div>
+            </div>
+        </div>
+
+        <form method="POST" action="/admin/manage-contacts">
+            <input type="hidden" name="username" value="{{ user.username }}">
+            
+            <div class="section-title-small">Current Contact Details</div>
+            <div class="contact-grid">
+                <div class="contact-field">
+                    <label>📧 Secretary Email</label>
+                    <div class="current-value {% if not user.secretary_email %}empty{% endif %}">
+                        {{ user.secretary_email or 'Not set' }}
+                    </div>
+                </div>
+                <div class="contact-field">
+                    <label>📧 Vice-Secretary Email</label>
+                    <div class="current-value {% if not user.vice_secretary_email %}empty{% endif %}">
+                        {{ user.vice_secretary_email or 'Not set' }}
+                    </div>
+                </div>
+                <div class="contact-field">
+                    <label>📱 Secretary Phone</label>
+                    <div class="current-value {% if not user.secretary_phone %}empty{% endif %}">
+                        {{ user.secretary_phone or 'Not set' }}
+                    </div>
+                </div>
+                <div class="contact-field">
+                    <label>📱 Vice-Secretary Phone</label>
+                    <div class="current-value {% if not user.vice_secretary_phone %}empty{% endif %}">
+                        {{ user.vice_secretary_phone or 'Not set' }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title-small">Update Contact Details</div>
+            <div class="contact-grid">
+                <div class="contact-field">
+                    <label>New Secretary Email</label>
+                    <input type="email" name="secretary_email" value="{{ user.secretary_email or '' }}" placeholder="Enter new email">
+                </div>
+                <div class="contact-field">
+                    <label>New Vice-Secretary Email</label>
+                    <input type="email" name="vice_secretary_email" value="{{ user.vice_secretary_email or '' }}" placeholder="Enter new email">
+                </div>
+                <div class="contact-field">
+                    <label>New Secretary Phone</label>
+                    <input type="tel" name="secretary_phone" value="{{ user.secretary_phone or '' }}" placeholder="Enter phone number">
+                </div>
+                <div class="contact-field">
+                    <label>New Vice-Secretary Phone</label>
+                    <input type="tel" name="vice_secretary_phone" value="{{ user.vice_secretary_phone or '' }}" placeholder="Enter phone number">
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <button type="submit" class="btn-update">💾 Update Contacts</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

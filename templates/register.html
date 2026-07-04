@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Register — KGANYA{% endblock %}
+
+{% block extra_css %}
+<style>
+    .otp-section {
+        display: none;
+        margin-top: 15px;
+        padding: 15px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    .otp-section.active {
+        display: block;
+    }
+    .otp-input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 10px;
+    }
+    .otp-input-group input {
+        flex: 1;
+        letter-spacing: 8px;
+        font-size: 18px;
+        text-align: center;
+        font-weight: bold;
+    }
+    .otp-btn {
+        background-color: #28a745 !important;
+        margin-top: 0 !important;
+        white-space: nowrap;
+    }
+    .otp-btn:disabled {
+        background-color: #6c757d !important;
+        cursor: not-allowed;
+    }
+    .otp-timer {
+        color: lightgoldenrodyellow;
+        font-size: 13px;
+        margin-top: 5px;
+    }
+    .field-note {
+        color: rgba(255,255,255,0.7);
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    .otp-status {
+        font-size: 13px;
+        margin-top: 8px;
+        min-height: 20px;
+    }
+    .otp-status.success { color: #28a745; }
+    .otp-status.error { color: #dc3545; }
+    .otp-status.info { color: lightgoldenrodyellow; }
+    .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    .contact-grid .form-group {
+        margin-bottom: 0;
+    }
+    @media (max-width: 768px) {
+        .contact-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo">
+            <h1>KGANYA</h1>
+            <h2>Create Account</h2>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if error %}
+            <div class="flash-messages">
+                <div class="alert alert-error">{{ error }}</div>
+            </div>
+        {% endif %}
+
+        {% if success %}
+            <div class="flash-messages">
+                <div class="alert alert-success">{{ success }}</div>
+            </div>
+        {% endif %}
+
+        <form method="POST" action="/register" id="registerForm">
+            {% if not registrations_open %}
+                <div style="background: #dc3545; color: white; padding: 15px; text-align: center; font-weight: bold; margin-bottom: 20px; border-radius: 5px;">
+                    ⚠️ Registrations are not yet open
+                </div>
+            {% endif %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control"
+                       placeholder="Choose a username" required autocomplete="username"
+                       value="{{ request.form.username or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       placeholder="Choose a password" required autocomplete="new-password" {% if not registrations_open %}disabled readonly{% endif %}>
+            </div>
+
+            <div class="contact-grid">
+                <div class="form-group">
+                    <label for="secretary_phone">Secretary Cellphone</label>
+                    <input type="tel" id="secretary_phone" name="secretary_phone" class="form-control"
+                           placeholder="0821234567" required
+                           value="{{ request.form.secretary_phone or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">Format: 0821234567</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="secretary_email">Secretary Email</label>
+                    <input type="email" id="secretary_email" name="secretary_email" class="form-control"
+                           placeholder="secretary@email.com" required
+                           value="{{ request.form.secretary_email or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">OTP will be sent here</div>
+                </div>
+            </div>
+
+            <div class="contact-grid" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label for="vice_secretary_phone">Vice-Secretary Cellphone</label>
+                    <input type="tel" id="vice_secretary_phone" name="vice_secretary_phone" class="form-control"
+                           placeholder="0837654321" required
+                           value="{{ request.form.vice_secretary_phone or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">Format: 0837654321</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="vice_secretary_email">Vice-Secretary Email</label>
+                    <input type="email" id="vice_secretary_email" name="vice_secretary_email" class="form-control"
+                           placeholder="vice@email.com" required
+                           value="{{ request.form.vice_secretary_email or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">OTP will be sent here</div>
+                </div>
+            </div>
+
+            <div class="contact-grid" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label for="church_code">Church Code</label>
+                    <input type="text" id="church_code" name="church_code" class="form-control"
+                           placeholder="e.g. 12345" required
+                           value="{{ request.form.church_code or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">Numbers only</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="church_file_number">Church File Number</label>
+                    <input type="text" id="church_file_number" name="church_file_number" class="form-control"
+                           placeholder="e.g. ABC123" required
+                           value="{{ request.form.church_file_number or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                    <div class="field-note">Letters and numbers only. Must be unique.</div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="church_branch_name">Church Branch Name</label>
+                <input type="text" id="church_branch_name" name="church_branch_name" class="form-control"
+                       placeholder="Enter church branch name" required
+                       value="{{ request.form.church_branch_name or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
+                <div class="field-note">e.g. Main Branch, North Branch</div>
+            </div>
+
+            <!-- OTP Section -->
+            <div class="otp-section" id="otpSection">
+                <label for="otp_code">Enter Email OTP Code</label>
+                <div class="otp-input-group">
+                    <input type="text" id="otp_code" name="otp_code" class="form-control"
+                           placeholder="000000" maxlength="6" pattern="[0-9]{6}"
+                           autocomplete="one-time-code" {% if not registrations_open %}disabled readonly{% endif %}>
+                </div>
+                <div class="otp-timer" id="otpTimer"></div>
+                <div class="otp-status" id="otpStatus"></div>
+            </div>
+
+            <button type="button" class="btn-primary otp-btn" id="sendOtpBtn" onclick="sendOTP()" {% if not registrations_open %}disabled{% endif %}>
+                📧 Send OTP to Email
+            </button>
+
+            <button type="submit" class="btn-primary" id="submitBtn" style="margin-top:15px;" {% if not registrations_open %}disabled{% endif %}>
+                {% if registrations_open %}Submit Registration{% else %}Registration Closed{% endif %}
+            </button>
+        </form>
+
+        <div class="login-link">
+            Already have an account? <a href="/login">Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let otpTimerInterval;
+let otpExpiryTime;
+
+function validateEmail(email) {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email.trim());
+}
+
+function validatePhone(phone) {
+    phone = phone.replace(/[\s\-]/g, '');
+    if (phone.startsWith('+')) phone = phone.substring(1);
+    if (phone.startsWith('0')) phone = '27' + phone.substring(1);
+    return /^27[6-8][0-9]{8}$/.test(phone);
+}
+
+function showOtpStatus(message, type) {
+    const statusEl = document.getElementById('otpStatus');
+    statusEl.textContent = message;
+    statusEl.className = 'otp-status ' + type;
+}
+
+function startOtpTimer() {
+    const timerEl = document.getElementById('otpTimer');
+    otpExpiryTime = Date.now() + (10 * 60 * 1000);
+
+    clearInterval(otpTimerInterval);
+    otpTimerInterval = setInterval(() => {
+        const remaining = otpExpiryTime - Date.now();
+        if (remaining <= 0) {
+            clearInterval(otpTimerInterval);
+            timerEl.textContent = 'OTP expired. Please request a new one.';
+            timerEl.style.color = '#dc3545';
+            document.getElementById('otp_code').disabled = true;
+            return;
+        }
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        timerEl.textContent = 'OTP expires in ' + mins + ':' + secs.toString().padStart(2, '0');
+        timerEl.style.color = 'lightgoldenrodyellow';
+    }, 1000);
+}
+
+async function sendOTP() {
+    const secEmail = document.getElementById('secretary_email').value.trim();
+    const viceEmail = document.getElementById('vice_secretary_email').value.trim();
+    const sendBtn = document.getElementById('sendOtpBtn');
+
+    if (!secEmail || !viceEmail) {
+        showOtpStatus('Please enter both email addresses first.', 'error');
+        return;
+    }
+
+    if (!validateEmail(secEmail)) {
+        showOtpStatus('Invalid Secretary email address.', 'error');
+        return;
+    }
+    if (!validateEmail(viceEmail)) {
+        showOtpStatus('Invalid Vice-Secretary email address.', 'error');
+        return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+    showOtpStatus('Sending OTP via email...', 'info');
+
+    try {
+        const response = await fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                recipient: secEmail,
+                purpose: 'registration',
+                method: 'email'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('otpSection').classList.add('active');
+            document.getElementById('submitBtn').style.display = 'block';
+            sendBtn.style.display = 'none';
+            startOtpTimer();
+
+            let msg = 'OTP sent to Secretary email (' + secEmail + ').';
+            if (data.dev_otp) {
+                msg += ' [DEV OTP: ' + data.dev_otp + ']';
+            }
+            showOtpStatus(msg, 'success');
+        } else {
+            showOtpStatus(data.error || 'Failed to send OTP.', 'error');
+            sendBtn.disabled = false;
+            sendBtn.textContent = '📧 Send OTP to Email';
+        }
+    } catch (err) {
+        showOtpStatus('Network error. Please try again.', 'error');
+        sendBtn.disabled = false;
+        sendBtn.textContent = '📧 Send OTP to Email';
+    }
+}
+
+// Auto-format phone inputs
+document.getElementById('secretary_phone').addEventListener('blur', function() {
+    if (this.value && !validatePhone(this.value)) {
+        this.style.borderColor = '#dc3545';
+    } else {
+        this.style.borderColor = '';
+    }
+});
+
+document.getElementById('vice_secretary_phone').addEventListener('blur', function() {
+    if (this.value && !validatePhone(this.value)) {
+        this.style.borderColor = '#dc3545';
+    } else {
+        this.style.borderColor = '';
+    }
+});
+</script>
+{% endblock %}

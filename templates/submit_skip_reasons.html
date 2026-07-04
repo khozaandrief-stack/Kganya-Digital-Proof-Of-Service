@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Skip Reasons — KGANYA{% endblock %}
+
+{% block navbar %}
+<<nav class="navbar">
+    <a href="/user" class="navbar-brand">KGANYA</a>
+    <ul class="navbar-nav">
+        <li><a href="/create-pos">📋 Create POS</a></li>
+        <li><a href="/my-pos-files">📁 My POS Files</a></li>
+        <li><a href="/logout">🚪 Logout ({{ session.username }})</a></li>
+    </ul>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .skip-container {
+        max-width: 800px;
+        margin: 40px auto;
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
+        padding: 30px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .skip-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .skip-header h1 {
+        color: #dc3545;
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+
+    .skip-header p {
+        color: #fff;
+        font-size: 16px;
+    }
+
+    .skip-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    .skip-table th {
+        background: rgba(0,0,0,0.45);
+        color: #ffeb3b;
+        padding: 12px;
+        text-align: left;
+    }
+
+    .skip-table td {
+        padding: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+    }
+
+    .skip-table tr:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+    .reason-select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(0,0,0,0.3);
+        color: #fff;
+        font-size: 14px;
+    }
+
+    .reason-select option {
+        background: #1e3a5f;
+        color: #fff;
+    }
+
+    .other-textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 10px;
+        margin-top: 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(0,0,0,0.3);
+        color: #fff;
+        font-size: 14px;
+        resize: vertical;
+        display: none;
+    }
+
+    .other-textarea::placeholder {
+        color: rgba(255,255,255,0.6);
+    }
+
+    .submit-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 14px 40px;
+        font-size: 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 20px;
+    }
+
+    .submit-btn:hover {
+        background: #c82333;
+    }
+
+    .back-btn {
+        display: inline-block;
+        background: #6c757d;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 6px;
+        text-decoration: none;
+        margin-top: 15px;
+    }
+
+    .no-skips {
+        text-align: center;
+        color: #28a745;
+        font-size: 20px;
+        padding: 40px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .status-pending {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .status-approved {
+        background: #28a745;
+        color: #fff;
+    }
+
+    .status-rejected {
+        background: #dc3545;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="skip-container">
+    <div class="skip-header">
+        <h1>📝 Submit Skip Reasons</h1>
+        <p>Provide reasons for your missed Sunday submissions below. All entries require admin approval before you can create new POS records.</p>
+    </div>
+
+    {% if skips %}
+    <form method="POST" action="/submit-skip-reasons" id="skipForm">
+        <table class="skip-table">
+            <thead>
+                <tr>
+                    <th>Expected Sunday</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>Explanation (if Other)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skip in skips %}
+                <tr>
+                    <td>{{ skip.expected_sunday }}</td>
+                    <td>
+                        <span class="status-badge status-{{ skip.status or 'pending' }}">
+                            {{ (skip.status or 'PENDING').upper() }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if skip.status == 'approved' %}
+                            <span style="color: #28a745;">✔ Approved — no action needed</span>
+                            <input type="hidden" name="skip_id[]" value="{{ skip.id }}">
+                        {% else %}
+                            <input type="hidden" name="skip_id[]" value="{{ skip.id }}">
+                            <select class="reason-select" name="reason[]" onchange="handleReasonChange(this)" required>
+                                <option value="">-- Select Reason --</option>
+                                <option value="no_service" {% if skip.reason == 'no_service' %}selected{% endif %}>There was no church Service</option>
+                                <option value="other" {% if skip.reason == 'other' %}selected{% endif %}>Other</option>
+                            </select>
+                            <textarea class="other-textarea" name="explanation[]" 
+                                placeholder="Please provide detailed explanation for 'Other'..."
+                                {% if skip.reason != 'other' %}style="display:none;"{% endif %}
+                            >{{ skip.explanation or '' }}</textarea>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if skip.status == 'approved' %}
+                            {{ skip.explanation or '-' }}
+                        {% else %}
+                            <small style="color: rgba(255,255,255,0.6);">Required if 'Other' selected</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="text-align: center;">
+            <button type="submit" class="submit-btn">Submit Reasons for Approval</button>
+        </div>
+    </form>
+    {% else %}
+    <div class="no-skips">
+        ✅ No outstanding skipped submissions found. You are clear to create POS records.
+        <br><br>
+        <a href="/create-pos" class="submit-btn" style="text-decoration: none; display: inline-block;">Go to Create POS</a>
+    </div>
+    {% endif %}
+
+    <div style="text-align: center;">
+        <a href="/user" class="back-btn">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function handleReasonChange(select) {
+    const row = select.closest('tr');
+    const textarea = row.querySelector('.other-textarea');
+    
+    if (select.value === 'other') {
+        textarea.style.display = 'block';
+        textarea.required = true;
+    } else {
+        textarea.style.display = 'none';
+        textarea.required = false;
+        textarea.value = '';
+    }
+}
+
+// Validate form before submit
+document.getElementById('skipForm').addEventListener('submit', function(e) {
+    const rows = this.querySelectorAll('tbody tr');
+    let valid = true;
+    
+    rows.forEach(row => {
+        const select = row.querySelector('.reason-select');
+        const textarea = row.querySelector('.other-textarea');
+        
+        if (!select) return; // Skip approved rows
+        
+        if (!select.value) {
+            valid = false;
+            select.style.borderColor = '#dc3545';
+        }
+        
+        if (select.value === 'other' && !textarea.value.trim()) {
+            valid = false;
+            textarea.style.borderColor = '#dc3545';
+            alert('Please provide an explanation for "Other" reasons.');
+        }
+    });
+    
+    if (!valid) {
+        e.preventDefault();
+        return false;
+    }
+});
+</script>
+{% endblock %}

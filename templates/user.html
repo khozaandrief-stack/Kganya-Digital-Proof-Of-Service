@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard — KGANYA{% endblock %}
+
+{% block navbar %}
+<nav class="navbar">
+    <a href="/user" class="navbar-brand">KGANYA</a>
+    <ul class="navbar-nav">
+        <li><a href="/create-pos">📋 Create POS</a></li>
+        <li><a href="/my-pos-files">📁 My POS Files</a></li>
+        <li><a href="/user/booklets">📖 My Booklets</a></li>
+        <li><a href="/logout">🚪 Logout ({{ session.username }})</a></li>
+    </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Welcome, {{ session.username }}!</h1>
+    <h3>Manage your Proof of Service records</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="/create-pos"><button>➕ Create New POS</button></a>
+        <a href="/my-pos-files"><button>📁 View My POS Files</button></a>
+        <a href="/user/booklets"><button>📖 View Booklets</button></a>
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">📊 My POS Summary</div>
+    <div id="pos-summary" style="color: white; text-align: center; padding: 20px;">Loading summary...</div>
+</div>
+
+<script>
+fetch('/api/my-pos-summary')
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('pos-summary');
+        if (data.error || data.length === 0) {
+            container.innerHTML = '<p>No POS records yet. Create your first one!</p>';
+            return;
+        }
+        let html = '<table><thead><tr><th>Year</th><th>Month</th><th>Records</th><th>Total Banking</th><th>Total Stickers</th></tr></thead><tbody>';
+        data.forEach(row => {
+            html += `<tr><td>${row.year}</td><td>${row.month_name}</td><td>${row.count}</td><td>R ${row.total_banking.toFixed(2)}</td><td>${row.total_stickers}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    })
+    .catch(() => {
+        document.getElementById('pos-summary').innerHTML = '<p>Error loading data</p>';
+    });
+</script>
+{% endblock %}

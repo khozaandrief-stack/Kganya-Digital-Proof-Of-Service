@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Products — KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>🏷️ Product Management</h1>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/admin" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">← Back to Admin</a>
+        <a href="/admin/booklets" style="color: lightgoldenrodyellow; text-decoration: none; font-weight: bold;">📚 Manage Booklets</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">➕ Add New Product</div>
+    <div class="login-card" style="max-width: 600px; margin: 20px auto 30px auto;">
+        <form method="POST" action="/add-product">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div class="form-group">
+                    <label for="name">Product Name</label>
+                    <input type="text" name="name" id="name" class="form-control" placeholder="e.g., KGANYA SPECIAL" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price (R)</label>
+                    <input type="number" name="price" id="price" class="form-control" step="0.01" min="0" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label for="deduction">Deduction (R)</label>
+                    <input type="number" name="deduction" id="deduction" class="form-control" step="0.01" min="0" placeholder="0.00" required>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 0; width: auto; padding: 12px 20px;">Add</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">📋 Existing Products</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Current Price</th>
+                    <th>Deduction</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                    <th>Update Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.name }}</td>
+                    <td>R{{ "%.2f"|format(product.price) }}</td>
+                    <td>R{{ "%.2f"|format(product.deduction) }}</td>
+                    <td style="{% if product.is_active %}color: #28a745;{% else %}color: #6c757d;{% endif %} font-weight: bold;">
+                        {% if product.is_active %}ACTIVE{% else %}INACTIVE{% endif %}
+                    </td>
+                    <td>{{ product.updated_at or 'N/A' }}</td>
+                    <td>
+                        <form method="POST" action="/update-product/{{ product.id }}" style="display: inline;">
+                            <input type="number" name="price" step="0.01" min="0" value="{{ product.price }}" style="width: 70px; padding: 5px; font-size: 12px;">
+                            <input type="number" name="deduction" step="0.01" min="0" value="{{ product.deduction }}" style="width: 70px; padding: 5px; font-size: 12px;">
+                            <button type="submit" style="margin-top: 0; padding: 5px 12px; font-size: 12px;">Update</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #666;">No products found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

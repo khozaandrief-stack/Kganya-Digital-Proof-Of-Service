@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Statistics - KGANYA{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold text-info">
+                <i class="fas fa-chart-bar me-2"></i>Audit Statistics
+            </h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Daily Activity (Last 30 Days)</div>
+                <div class="card-body">
+                    <canvas id="dailyChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Category Breakdown</div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">Failed Login Trends</div>
+                <div class="card-body">
+                    <canvas id="failedLoginChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Most Active Users</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>User</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            {% for u in active_users %}
+                            <tr>
+                                <td><a href="/superadmin/audit-user-activity/{{ u.username }}">{{ u.username }}</a></td>
+                                <td>{{ u.count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Location Distribution</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Location</th><th>Count</th></tr></thead>
+                        <tbody>
+                            {% for loc in location_distribution %}
+                            <tr><td>{{ loc.location }}</td><td>{{ loc.count }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Daily Activity Chart
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'line',
+    data: {
+        labels: {{ daily_activity | map(attribute='date') | list | tojson }},
+        datasets: [{
+            label: 'Events',
+            data: {{ daily_activity | map(attribute='count') | list | tojson }},
+            borderColor: '#1e3a5f',
+            backgroundColor: 'rgba(30, 58, 95, 0.1)',
+            fill: true
+        }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+});
+
+// Category Breakdown Chart
+const catCtx = document.getElementById('categoryChart').getContext('2d');
+new Chart(catCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ category_breakdown | map(attribute='action_category') | list | tojson }},
+        datasets: [{
+            data: {{ category_breakdown | map(attribute='count') | list | tojson }},
+            backgroundColor: ['#1e3a5f', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6']
+        }]
+    }
+});
+
+// Failed Login Chart
+const failCtx = document.getElementById('failedLoginChart').getContext('2d');
+new Chart(failCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ failed_login_trends | map(attribute='date') | list | tojson }},
+        datasets: [{
+            label: 'Failed Logins',
+            data: {{ failed_login_trends | map(attribute='count') | list | tojson }},
+            backgroundColor: '#ef4444'
+        }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}

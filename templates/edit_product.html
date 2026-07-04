@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Product — KGANYA{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <h1>Edit Product</h1>
+    <h3>Update product pricing information</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="login-card" style="max-width: 500px; margin: 30px auto;">
+        <form method="POST" action="/update-product/{{ product.id }}">
+            <div class="form-group">
+                <label for="name">Product Name</label>
+                <input type="text" id="name" name="name" class="form-control" value="{{ product.name }}" required>
+            </div>
+            <div class="form-group">
+                <label for="price">Price (R)</label>
+                <input type="number" step="0.01" id="price" name="price" class="form-control" value="{{ product.price }}" required>
+            </div>
+            <div class="form-group">
+                <label for="deduction">Deduction (R)</label>
+                <input type="number" step="0.01" id="deduction" name="deduction" class="form-control" value="{{ product.deduction }}" required>
+            </div>
+            <button type="submit" class="btn-primary">💾 Save Changes</button>
+            <a href="/admin" style="display: block; text-align: center; margin-top: 15px;"><button type="button" style="background-color: #6c757d;">← Back</button></a>
+        </form>
+    </div>
+</div>
+{% endblock %}

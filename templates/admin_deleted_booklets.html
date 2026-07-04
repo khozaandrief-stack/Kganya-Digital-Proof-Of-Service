@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Deleted Booklets — KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>🗑️ Deleted Booklets Log</h1>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/admin/booklets" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">← Back to Booklets</a>
+        <a href="/admin" style="color: lightgoldenrodyellow; text-decoration: none; margin-right: 15px; font-weight: bold;">📊 Admin Dashboard</a>
+        <a href="/superadmin" style="color: lightgoldenrodyellow; text-decoration: none; font-weight: bold;">⚙️ Superadmin</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="section-title" style="font-weight: bold; color: yellow;">📋 Deleted Booklets Audit Trail</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Original ID</th>
+                    <th>User</th>
+                    <th>Branch</th>
+                    <th>Product</th>
+                    <th>Booklet #</th>
+                    <th>Type</th>
+                    <th>Range</th>
+                    <th>Total</th>
+                    <th>Price (at alloc)</th>
+                    <th>Allocated By</th>
+                    <th>Created</th>
+                    <th>Deleted By</th>
+                    <th>Deleted At</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booklet in deleted_booklets %}
+                <tr>
+                    <td>{{ booklet.id }}</td>
+                    <td>{{ booklet.original_booklet_id }}</td>
+                    <td>{{ booklet.username }}</td>
+                    <td>{{ booklet.church_branch_name or 'N/A' }}</td>
+                    <td>{{ booklet.product_name }}</td>
+                    <td>{{ booklet.booklet_number }}</td>
+                    <td>{{ booklet.receipt_type }}</td>
+                    <td>{{ booklet.receipt_from }} → {{ booklet.receipt_to }}</td>
+                    <td>{{ booklet.total_receipts }}</td>
+                    <td>R{{ "%.2f"|format(booklet.price_at_allocation) }}<<br><small>Ded: R{{ "%.2f"|format(booklet.deduction_at_allocation) }}</small></td>
+                    <td>{{ booklet.allocated_by }}</td>
+                    <td>{{ booklet.created_at }}</td>
+                    <td style="color: #dc3545; font-weight: bold;">{{ booklet.deleted_by }}</td>
+                    <td>{{ booklet.deleted_at }}</td>
+                    <td>{{ booklet.deletion_reason or 'N/A' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="15" style="text-align: center; color: #666;">No deleted booklets yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

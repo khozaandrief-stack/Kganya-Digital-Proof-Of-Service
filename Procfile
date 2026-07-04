@@ -1,0 +1,1 @@
+web: gunicorn Digital_Proof_Of_Service:app
