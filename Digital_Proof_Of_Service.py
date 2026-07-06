@@ -121,6 +121,7 @@ print(f"MAIL_USE_TLS={app.config['MAIL_USE_TLS']}")
 
 
 def verify_smtp():
+    print(">>>>>>>> INSIDE verify_smtp() <<<<<<<<")
     try:
         print("Connecting to Gmail SMTP...")
 
@@ -149,9 +150,10 @@ print("MAIL_USE_TLS=", app.config["MAIL_USE_TLS"])
 print("MAIL_USE_SSL=", app.config["MAIL_USE_SSL"])
 print("==================================\n")
 
+print(">>>>>>>> ABOUT TO CALL verify_smtp() <<<<<<<<")
 with app.app_context():
     verify_smtp()
-
+print(">>>>>>>> verify_smtp() FINISHED <<<<<<<<")
 
 
 # =========================================
