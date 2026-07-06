@@ -63,6 +63,7 @@ if not key:
 
 app = Flask(__name__)
 app.secret_key = key
+print("FLASK APP LOADED - ROUTES WILL REGISTER")
 
 app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
@@ -148,8 +149,8 @@ print("MAIL_USE_TLS=", app.config["MAIL_USE_TLS"])
 print("MAIL_USE_SSL=", app.config["MAIL_USE_SSL"])
 print("==================================\n")
 
-with app.app_context():
-    verify_smtp()
+#with app.app_context():
+#    verify_smtp()
 
 
 
