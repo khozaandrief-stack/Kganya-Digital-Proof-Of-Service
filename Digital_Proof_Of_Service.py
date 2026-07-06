@@ -48,7 +48,7 @@ import tempfile
 
 import base64
 import hashlib
-
+from backup_manager import perform_backup, restore_database
 
 
 
@@ -72,6 +72,7 @@ app.config.update(
 )
 
 DB_NAME = "database.db"
+restore_database()
 POS_FOLDER = "Kganya_Digital_POS"
 
 UPLOAD_FOLDER = "Kganya_Uploads"
@@ -3795,20 +3796,21 @@ def login():
 def logout():
     username = session.get("username", "unknown")
     role = session.get("role", "unknown")
-    
+
     # AUDIT: Log logout
     log_audit_event(
         "LOGOUT",
         f"User '{username}' ({role}) logged out",
         action_category="authentication"
     )
-    
+
+    perform_backup()
+
     flash("You have been logged out.", "info")
     session.clear()
     response = redirect("/login")
     response.set_cookie("session", "", expires=0)
     return response
-
 
 @app.route('/force-password-change', methods=['GET', 'POST'])
 def force_password_change():
@@ -7638,6 +7640,14 @@ KGANYA Financial Service Providers""")
     
     return render_template("admin_manage_contacts.html", users=users)
 
+@app.route("/smtp-test")
+def smtp_test():
+    import socket
+    try:
+        socket.create_connection(("smtp.gmail.com", 587), timeout=10)
+        return "SMTP port reachable"
+    except Exception as e:
+        return str(e)
 
 
 # =========================================
