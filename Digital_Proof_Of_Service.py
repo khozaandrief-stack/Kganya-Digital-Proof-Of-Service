@@ -758,25 +758,40 @@ from threading import Thread
 
 def _send_mail_job(app_config, msg, retries):
     """
-    Stable SMTP sender (no Flask context dependency)
+    Stable SMTP sender with detailed logging
     """
+
+    print("=" * 60)
+    print("BACKGROUND EMAIL THREAD STARTED")
+    print(f"Recipient(s): {msg.recipients}")
+    print(f"Subject: {msg.subject}")
+    print("=" * 60)
 
     for attempt in range(1, retries + 1):
         try:
+            print(f"[Attempt {attempt}] Opening Flask app context...")
+
             with app.app_context():
+                print(f"[Attempt {attempt}] Calling mail.send()...")
                 mail.send(msg)
 
-            print("✓ Email sent successfully")
+            print(f"[Attempt {attempt}] ✓ Email sent successfully")
             return True
 
         except Exception as e:
-            print(f"Email attempt {attempt}/{retries} failed: {e}")
+            print(f"[Attempt {attempt}] ✗ Email failed")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Exception: {e}")
+
+            import traceback
+            traceback.print_exc()
 
             if attempt < retries:
+                print("Retrying in 2 seconds...")
                 time.sleep(2)
 
+    print("Email completely failed after all retries.")
     return False
-
 
 def safe_send_mail(msg, retries=3, async_mode=True):
     """
@@ -2152,7 +2167,7 @@ def send_otp_email(recipient, otp_code, purpose):
         
         
         #mail.send(msg)
-        if not safe_send_mail(msg, async_mode=False): #safe_send_mail(msg):
+        if not safe_send_mail(msg): 
             return False
         #print(f"✅ SUCCESS: OTP email sent to {recipient}")
         return True
