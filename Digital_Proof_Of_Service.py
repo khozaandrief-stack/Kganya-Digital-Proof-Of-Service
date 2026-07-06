@@ -2152,7 +2152,7 @@ def send_otp_email(recipient, otp_code, purpose):
         
         
         #mail.send(msg)
-        if not safe_send_mail(msg):
+        if not safe_send_mail(msg, async_mode=False): #safe_send_mail(msg):
             return False
         #print(f"✅ SUCCESS: OTP email sent to {recipient}")
         return True
