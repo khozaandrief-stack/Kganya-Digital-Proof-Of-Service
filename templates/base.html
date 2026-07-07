@@ -560,6 +560,105 @@
         letter-spacing: 2px;
     }
 
+        /* =========================================
+       MOBILE ENHANCEMENTS — Minimal Additions
+       ========================================= */
+
+    @media (max-width: 768px) {
+        /* Container: full width, less padding */
+        .container {
+            max-width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        /* All inputs: full width, touch-friendly */
+        input, select, textarea, .form-control {
+            width: 100% !important;
+            min-height: 44px;
+            font-size: 16px; /* Prevents iOS zoom on focus */
+            padding: 10px;
+        }
+
+        /* Buttons: touch-friendly */
+        button, .btn-primary, .btn-action {
+            min-height: 44px;
+            font-size: 16px;
+            padding: 12px 16px;
+        }
+
+        /* Tables: horizontal scroll */
+        table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+        }
+
+        /* Headings: smaller */
+        h1 { font-size: 22px !important; }
+        h2 { font-size: 18px !important; }
+        h3 { font-size: 16px !important; }
+        .page-title { font-size: 22px; }
+
+        /* Login card: tighter */
+        .login-card {
+            padding: 20px;
+            margin: 10px;
+        }
+        .login-logo h1 {
+            font-size: 28px;
+        }
+
+        /* Navbar: better stacking */
+        .navbar {
+            padding: 8px 12px;
+        }
+        .navbar-brand {
+            font-size: 18px;
+        }
+        .navbar-nav {
+            gap: 4px;
+        }
+        .navbar-nav a {
+            font-size: 11px;
+            padding: 8px 10px;
+            min-height: 36px;
+        }
+
+        /* Cards: single column */
+        .card {
+            padding: 12px;
+        }
+
+        /* Prevent horizontal scroll */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        /* Touch optimization */
+        a, button, input, select, textarea {
+            touch-action: manipulation;
+        }
+    }
+
+    @media (max-width: 480px) {
+        /* Very small phones */
+        .container {
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .login-card {
+            padding: 15px;
+        }
+        .navbar-nav a {
+            font-size: 10px;
+            padding: 6px 8px;
+        }
+        h1 { font-size: 20px !important; }
+    }
+
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -804,6 +903,45 @@
             loader.classList.add('hidden');
         }
     }, 10000);
+</script>
+
+
+<!-- =========================================
+     AUTO-WRAP TABLES FOR MOBILE SCROLLING
+     ========================================= -->
+<script>
+(function() {
+    // Only run on screens 768px or smaller (phones)
+    if (window.innerWidth > 768) return;
+
+    function wrapTables() {
+        document.querySelectorAll('table').forEach(function(table) {
+            // Skip if already wrapped or inside a scroll container
+            if (table.closest('.table-container')) return;
+            if (table.parentElement && table.parentElement.classList.contains('table-container')) return;
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'table-container';
+            wrapper.style.overflowX = 'auto';
+            wrapper.style.webkitOverflowScrolling = 'touch';
+            wrapper.style.display = 'block';
+            wrapper.style.width = '100%';
+
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        });
+    }
+
+    // Run on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wrapTables);
+    } else {
+        wrapTables();
+    }
+
+    // Also run after HTMX swaps (if you use htmx for dynamic content)
+    document.body.addEventListener('htmx:afterSwap', wrapTables);
+})();
 </script>
 
 </body>
