@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 <style>
-    /* ===== SLIDER STYLES ===== */
+    /* ===== SLIDER STYLES (unchanged) ===== */
     .login-slider-overlay {
         position: fixed;
         top: 0;
@@ -33,19 +33,13 @@
         opacity: 0;
         transition: opacity 1.2s ease-in-out;
     }
-    .login-slider-overlay .slide.active {
-        opacity: 1;
-    }
+    .login-slider-overlay .slide.active { opacity: 1; }
     .login-slider-overlay .slide::after {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0; width: 100%; height: 100%;
         background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
     }
-    /* Fallback bg color for each slide if image fails */
     .login-slider-overlay .slide:nth-child(1) { background-color: #1a5c3a; }
     .login-slider-overlay .slide:nth-child(2) { background-color: #2d5016; }
     .login-slider-overlay .slide:nth-child(3) { background-color: #1a3a2a; }
@@ -96,11 +90,7 @@
         backdrop-filter: blur(6px);
         cursor: pointer;
     }
-    .tap-hint svg {
-        width: 20px;
-        height: 20px;
-        fill: currentColor;
-    }
+    .tap-hint svg { width: 20px; height: 20px; fill: currentColor; }
     @keyframes pulseHint {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.06); opacity: 0.75; }
@@ -115,8 +105,7 @@
         z-index: 10;
     }
     .slider-dots .dot {
-        width: 8px;
-        height: 8px;
+        width: 8px; height: 8px;
         border-radius: 50%;
         background: rgba(255,255,255,0.35);
         transition: all 0.3s ease;
@@ -143,70 +132,11 @@
         opacity: 1;
         transform: translateY(0);
     }
-
-    /* ===== EXISTING STYLES (preserved) ===== */
-    .otp-section {
-        display: none;
-        margin-top: 15px;
-        padding: 15px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.2);
-    }
-    .otp-section.active {
-        display: block;
-    }
-    .otp-input-group {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-top: 10px;
-    }
-    .otp-input-group input {
-        flex: 1;
-        letter-spacing: 8px;
-        font-size: 18px;
-        text-align: center;
-        font-weight: bold;
-    }
-    .otp-btn {
-        background-color: #28a745 !important;
-        margin-top: 0 !important;
-        white-space: nowrap;
-    }
-    .otp-btn:disabled {
-        background-color: #6c757d !important;
-        cursor: not-allowed;
-    }
-    .otp-timer {
-        color: lightgoldenrodyellow;
-        font-size: 13px;
-        margin-top: 5px;
-    }
-    .otp-status {
-        font-size: 13px;
-        margin-top: 8px;
-        min-height: 20px;
-    }
-    .otp-status.success { color: #28a745; }
-    .otp-status.error { color: #dc3545; }
-    .otp-status.info { color: lightgoldenrodyellow; }
-    .login-step-info {
-        color: lightgoldenrodyellow;
-        text-align: center;
-        margin-bottom: 15px;
-        font-size: 14px;
-    }
-    .email-masked {
-        color: white;
-        font-weight: bold;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- ===== IMAGE SLIDER OVERLAY ===== -->
-<!-- Images are in static/ -->
 <div class="login-slider-overlay" id="sliderOverlay">
     <div class="slide active" style="background-image: url('{{ url_for('static', filename='Picture2.jpg') }}');"></div>
     <div class="slide" style="background-image: url('{{ url_for('static', filename='Picture3.jpeg') }}');"></div>
@@ -240,7 +170,7 @@
     </div>
 </div>
 
-<!-- ===== LOGIN PAGE (hidden until tap) ===== -->
+<!-- ===== LOGIN PAGE ===== -->
 <div class="login-page" id="loginPage">
     <div class="login-card">
         <div class="login-logo">
@@ -264,74 +194,29 @@
             </div>
         {% endif %}
 
-        {% if info %}
-            <div class="flash-messages">
-                <div class="alert alert-info">{{ info }}</div>
-            </div>
-        {% endif %}
-
-        <!-- STEP 1: Username & Password -->
-        <div id="step1" {% if step == 2 %}style="display:none;"{% endif %}>
-            <form method="POST" action="/login" id="loginForm">
-                <input type="hidden" name="login_step" value="1">
-
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control"
-                           placeholder="Enter username" required autocomplete="off" readonly
-                           onfocus="this.removeAttribute('readonly')"
-                           value="{{ username or '' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control"
-                           placeholder="Enter password" required autocomplete="new-password" readonly
-                           onfocus="this.removeAttribute('readonly')">
-                </div>
-
-                <button type="submit" class="btn-primary">
-                    Login
-                </button>
-
-                <div style="text-align: center; margin-top: 15px;">
-                    <a href="/forgot-password" style="color: rgba(255,255,255,0.7); font-size: 0.9em;">Forgot your password?</a>
-                </div>
-    
-            </form>
-        </div>
-
-        <!-- STEP 2: Email OTP -->
-        <div id="step2" class="otp-section {% if step == 2 %}active{% endif %}">
-            <div class="login-step-info">
-                {% if email_masked %}
-                An OTP has been sent to <span class="email-masked">{{ email_masked }}</span>
-                {% else %}
-                Enter the 6-digit OTP sent to your email
-                {% endif %}
+        <!-- SIMPLE USERNAME + PASSWORD LOGIN -->
+        <form method="POST" action="/login" id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control"
+                       placeholder="Enter username" required autocomplete="off" readonly
+                       onfocus="this.removeAttribute('readonly')"
+                       value="{{ username or '' }}">
             </div>
 
-            <form method="POST" action="/login" id="otpForm">
-                <input type="hidden" name="login_step" value="2">
-                <input type="hidden" name="username" value="{{ username or '' }}">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       placeholder="Enter password" required autocomplete="new-password" readonly
+                       onfocus="this.removeAttribute('readonly')">
+            </div>
 
-                <div class="form-group">
-                    <label for="otp_code">Enter OTP Code</label>
-                    <div class="otp-input-group">
-                        <input type="text" id="otp_code" name="otp_code" class="form-control"
-                               placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
-                               autocomplete="one-time-code">
-                    </div>
-                    <div class="otp-timer" id="otpTimer"></div>
-                    <div class="otp-status" id="otpStatus"></div>
-                </div>
+            <button type="submit" class="btn-primary">Login</button>
 
-                <button type="submit" class="btn-primary">Verify & Login</button>
-                <a href="/login" style="display: block; text-align: center; margin-top: 10px;">
-                    <button type="button" style="background-color: #6c757d;">← Back to Login</button>
-                </a>
-            </form>
-        </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="/forgot-password" style="color: rgba(255,255,255,0.7); font-size: 0.9em;">Forgot your password?</a>
+            </div>
+        </form>
 
         <div class="login-link">
             Don't have an account? <a href="/register">Register</a>
@@ -342,43 +227,23 @@
 
 {% block extra_js %}
 <script>
-
-let otpMode = {{ (request.args.get('otp') == '1') | tojson }};
 (function() {
-
-    // =========================
-    // SLIDER ELEMENTS
-    // =========================
     const slides = document.querySelectorAll('.login-slider-overlay .slide');
     const dots = document.querySelectorAll('.slider-dots .dot');
     const overlay = document.getElementById('sliderOverlay');
     const loginPage = document.getElementById('loginPage');
-
     let currentSlide = 0;
     let slideInterval;
     let sliderRevealed = false;
 
-    // =========================
-    // SYSTEM STATE FLAGS
-    // =========================
-    let isOtpActive = false;
-    let isUserTyping = false;
-
-    // =========================
-    // SLIDER FUNCTIONS
-    // =========================
     function showSlide(index) {
-        slides.forEach((slide, i) => {
-            slide.classList.toggle('active', i === index);
-        });
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === index);
-        });
+        slides.forEach((slide, i) => { slide.classList.toggle('active', i === index); });
+        dots.forEach((dot, i) => { dot.classList.toggle('active', i === index); });
         currentSlide = index;
     }
 
     function nextSlide() {
-        if (isOtpActive || isUserTyping || sliderRevealed || otpMode) return;
+        if (sliderRevealed) return;
         showSlide((currentSlide + 1) % slides.length);
     }
 
@@ -389,112 +254,40 @@ let otpMode = {{ (request.args.get('otp') == '1') | tojson }};
 
     function stopSlider() {
         clearInterval(slideInterval);
-        slideInterval = null;
     }
 
-    // =========================
-    // OTP MODE CONTROL
-    // =========================
-    function activateOtpMode() {
-        isOtpActive = true;
-        stopSlider();
-        resetInactivityTimer();
-    }
-
-    function deactivateOtpMode() {
-        isOtpActive = false;
-    }
-
-    // =========================
-    // LOGIN SCREEN CONTROL
-    // =========================
     function revealLogin() {
         if (sliderRevealed) return;
-
         sliderRevealed = true;
-
         stopSlider();
         overlay.classList.add('hidden');
         loginPage.classList.add('revealed');
-
-        resetInactivityTimer();
         document.getElementById('username')?.focus();
     }
 
     function returnToSlider() {
-
         sliderRevealed = false;
-        isUserTyping = false;
-        isOtpActive = false;
-
         overlay.classList.remove('hidden');
         loginPage.classList.remove('revealed');
-
         document.querySelectorAll('#loginForm input').forEach(i => i.value = '');
-
-        const otpField = document.getElementById('otp_code');
-        if (otpField) otpField.value = '';
-
         showSlide(0);
         startSlider();
     }
 
-    // =========================
-    // INACTIVITY TIMER
-    // =========================
     let inactivityTimer;
     const INACTIVITY_LIMIT = 5 * 60 * 1000;
 
     function resetInactivityTimer() {
         clearTimeout(inactivityTimer);
-
         inactivityTimer = setTimeout(() => {
-            if (!isOtpActive && !isUserTyping) {
-                returnToSlider();
-            }
+            if (!sliderRevealed) return;
+            returnToSlider();
         }, INACTIVITY_LIMIT);
     }
 
-    // =========================
-    // OTP FUNCTIONS
-    // =========================
-
-    function verifyOtp(code) {
-
-        const formData = new FormData();
-        formData.append("otp_code", code);
-
-        fetch('/api/verify-otp', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-
-            if (data.success) {
-
-                deactivateOtpMode();
-
-                window.location.href = "/dashboard";
-
-            } else {
-                alert("Invalid OTP");
-            }
-        });
-    }
-
-    // =========================
-    // EVENTS
-    // =========================
     startSlider();
-
     overlay.addEventListener('click', revealLogin);
-
-    overlay.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        revealLogin();
-    }, { passive: false });
-
+    overlay.addEventListener('touchstart', function(e) { e.preventDefault(); revealLogin(); }, { passive: false });
     dots.forEach(dot => {
         dot.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -502,7 +295,6 @@ let otpMode = {{ (request.args.get('otp') == '1') | tojson }};
             startSlider();
         });
     });
-
     document.addEventListener('keydown', function(e) {
         if (!sliderRevealed && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -510,68 +302,12 @@ let otpMode = {{ (request.args.get('otp') == '1') | tojson }};
         }
     });
 
-    // =========================
-    // INPUT TRACKING
-    // =========================
-    document.querySelectorAll('#loginForm input, #otpForm input')
-        .forEach(el => {
-
-            el.addEventListener('input', () => {
-                isUserTyping = true;
-                stopSlider();
-                resetInactivityTimer();
-            });
-
-            el.addEventListener('keydown', () => {
-                isUserTyping = true;
-                stopSlider();
-                resetInactivityTimer();
-            });
-
-            el.addEventListener('blur', () => {
-                isUserTyping = false;
-                resetInactivityTimer();
-            });
-        });
+    document.querySelectorAll('#loginForm input').forEach(el => {
+        el.addEventListener('input', () => { stopSlider(); resetInactivityTimer(); });
+        el.addEventListener('keydown', () => { stopSlider(); resetInactivityTimer(); });
+    });
 
     loginPage.addEventListener('click', resetInactivityTimer);
-
-    // =========================
-    // EXPOSE FUNCTIONS GLOBALLY (IMPORTANT FIX)
-    // =========================
-   
-    window.verifyOtp = verifyOtp;
-
-    // =========================
-    // OTP TIMER (UNCHANGED)
-    // =========================
-    {% if request.args.get('otp') == '1' %}
-    let otpExpiryTime = Date.now() + (10 * 60 * 1000);
-
-    let otpTimerInterval = setInterval(() => {
-
-        const timerEl = document.getElementById('otpTimer');
-        const remaining = otpExpiryTime - Date.now();
-
-        if (remaining <= 0) {
-            clearInterval(otpTimerInterval);
-            timerEl.textContent = 'OTP expired. Please go back and try again.';
-            timerEl.style.color = '#dc3545';
-            document.getElementById('otp_code').disabled = true;
-            return;
-        }
-
-        const mins = Math.floor(remaining / 60000);
-        const secs = Math.floor((remaining % 60000) / 1000);
-
-        timerEl.textContent = 'OTP expires in ' +
-            mins + ':' + secs.toString().padStart(2, '0');
-
-        timerEl.style.color = 'lightgoldenrodyellow';
-
-    }, 1000);
-    {% endif %}
-
 })();
 </script>
 {% endblock %}

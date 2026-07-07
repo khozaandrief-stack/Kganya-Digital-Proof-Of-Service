@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Password Reset Requests — KGANYA{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>🔑 Password Reset Requests</h1>
+    <p class="subtitle">Review and approve user password reset requests</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if requests %}
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr style="background: rgba(0,0,0,0.5);">
+                <th style="padding: 12px; text-align: left; color: #ffeb3b;">Username</th>
+                <th style="padding: 12px; text-align: left; color: #ffeb3b;">Type</th>
+                <th style="padding: 12px; text-align: left; color: #ffeb3b;">Email</th>
+                <th style="padding: 12px; text-align: left; color: #ffeb3b;">Requested</th>
+                <th style="padding: 12px; text-align: left; color: #ffeb3b;">Status</th>
+                <th style="padding: 12px; text-align: center; color: #ffeb3b;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <td style="padding: 12px; color: #fff;">{{ req.username }}</td>
+                <td style="padding: 12px; color: #fff;">{{ req.user_type }}</td>
+                <td style="padding: 12px; color: #fff;">{{ req.email or '—' }}</td>
+                <td style="padding: 12px; color: rgba(255,255,255,0.7); font-size: 13px;">{{ req.requested_at }}</td>
+                <td style="padding: 12px;">
+                    {% if req.status == 'pending' %}
+                        <span style="color: #ffc107; font-weight: bold;">⏳ Pending</span>
+                    {% elif req.status == 'approved' %}
+                        <span style="color: #28a745;">✅ Approved by {{ req.approved_by }}</span>
+                    {% else %}
+                        <span style="color: #dc3545;">{{ req.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px; text-align: center;">
+                    {% if req.status == 'pending' %}
+                    <form method="POST" action="/admin/approve-reset-request/{{ req.id }}" style="display: inline;">
+                        <button type="submit" class="btn-primary" style="background: #28a745; padding: 8px 16px; font-size: 13px;">
+                            ✔ Approve
+                        </button>
+                    </form>
+                    {% elif req.status == 'approved' and req.reset_token %}
+                        <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #ffeb3b;">
+                            {{ req.reset_token }}
+                        </code>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.5);">
+        <p style="font-size: 48px; margin-bottom: 15px;">📭</p>
+        <h3>No Reset Requests</h3>
+        <p>When users request password resets, they will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

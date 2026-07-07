@@ -89,6 +89,7 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
 OTP_EXPIRY_MINUTES = 10
+PAUSE_EMAILS = True
 
 
 
@@ -150,10 +151,10 @@ print("MAIL_USE_TLS=", app.config["MAIL_USE_TLS"])
 print("MAIL_USE_SSL=", app.config["MAIL_USE_SSL"])
 print("==================================\n")
 
-print(">>>>>>>> ABOUT TO CALL verify_smtp() <<<<<<<<")
-with app.app_context():
-    verify_smtp()
-print(">>>>>>>> verify_smtp() FINISHED <<<<<<<<")
+#print(">>>>>>>> ABOUT TO CALL verify_smtp() <<<<<<<<")
+#with app.app_context():
+#    verify_smtp()
+#print(">>>>>>>> verify_smtp() FINISHED <<<<<<<<")
 
 
 # =========================================
@@ -739,6 +740,21 @@ def init_db():
         cursor.execute("ALTER TABLE receipt_booklets ADD COLUMN max_receipt_issued INTEGER DEFAULT 0")
     except:
         pass
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT,
+            user_type TEXT DEFAULT 'user',
+            status TEXT DEFAULT 'pending',
+            requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            approved_by TEXT,
+            approved_at TIMESTAMP,
+            reset_token TEXT,
+            reset_token_expires TIMESTAMP,
+            used INTEGER DEFAULT 0
+        )
+    """)
 
     conn.commit()
     conn.close() 
@@ -796,6 +812,9 @@ def _send_mail_job(app_config, msg, retries):
     return False
 
 def safe_send_mail(msg, retries=3, async_mode=True):
+    if PAUSE_EMAILS:
+        print(f"[EMAIL PAUSED] Would have sent to {msg.recipients} — Subject: {msg.subject}")
+        return True
     """
     Single stable entry point for ALL email sending
     """
@@ -3458,19 +3477,9 @@ def register():
         if not valid_branch:
             return render_template("register.html", error=cleaned_branch, registrations_open=bool(registrations_open))
 
-        if not otp_code:
-            return render_template("register.html", error="OTP code is required.", registrations_open=bool(registrations_open))
-
-        otp_verified = False
-        for email in [cleaned_sec_email, cleaned_vice_email]:
-            success, msg = verify_otp_code(email, otp_code, "registration")
-            if success:
-                otp_verified = True
-                break
-
-        if not otp_verified:
-            return render_template("register.html", error="Invalid or expired OTP code.", registrations_open=bool(registrations_open))
-
+        # OTP verification REMOVED — emails are paused
+        # Registration proceeds without OTP when PAUSE_EMAILS is True
+        
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -3675,139 +3684,68 @@ def clear_all_pos():
     
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    otp_mode = request.args.get("otp") == "1"
     if request.method == "POST":
-        login_step = request.form.get("login_step", "1")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
         
-        if login_step == "1":
-            username = request.form.get("username", "").strip()
-            password = request.form.get("password", "").strip()
-            
-            if not username or not password:
-                return render_template("login.html", error="Username and password are required.")
-            
-            session.clear()
-            
-            admin = get_admin(username)
-            if admin and check_password_hash(admin["password"], password):
-                # Check if admin has pending temporary password reset
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    SELECT *
-                    FROM password_reset_tokens
-                    WHERE username = ?
-                      AND user_type = 'admin'
-                      AND used = 0
-                      AND expires_at > ?
-                """,
-                (
-                    username,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                ))
-                
-                pending_reset = cursor.fetchone()
-                
-                conn.close()
-                
-                if pending_reset:
-                    flash("You must change your temporary password before continuing.", "warning")
-                    return redirect(f"/admin/reset-password/{pending_reset['token']}")
-                
-                # Existing force password change check
-                if admin["force_password_change"] == 1:
-                    session["force_change_user"] = username
-                    return redirect(url_for("force_password_change"))
-                
-                email = admin["email"]
-                if not email:
-                    log_login_attempt(username, password, False, "Admin account has no email configured")
-                    return render_template("login.html", error="Admin account has no email configured.")
-                
-                otp_code = generate_otp()
-                store_login_otp(username, otp_code, admin["role"])
-                send_otp_email(email, otp_code, "login")
-                
-                session["pending_login_user"] = username
-                session["pending_login_role"] = admin["role"]
-                
-                return render_template("login.html", 
-                                       step=2, 
-                                       username=username, 
-                                       email_masked=mask_email(email))
-            
-            user = get_user(username)
-            if user and check_password_hash(user["password"], password):
-                email = user.get("secretary_email") or user.get("vice_secretary_email")
-                if not email:
-                    log_login_attempt(username, password, False, "No email address on file")
-                    return render_template("login.html", 
-                                           error="No email address on file for this account. Please contact admin.")
-                
-                otp_code = generate_otp()
-                store_login_otp(username, otp_code, "user")
-                send_otp_email(email, otp_code, "login")
-                
-                session["pending_login_user"] = username
-                session["pending_login_role"] = "user"
-                
-                return render_template("login.html", 
-                                       step=2, 
-                                       username=username, 
-                                       email_masked=mask_email(email))
-            
-            # AUDIT: Log failed login
-            log_login_attempt(username, password, False, "Invalid username or password")
-            return render_template("login.html", error="Invalid username or password")
+        if not username or not password:
+            return render_template("login.html", error="Username and password are required.")
         
-        else:
-            username = request.form.get("username", "").strip()
-            otp_code = request.form.get("otp_code", "").strip()
+        session.clear()
+        
+        # Check admin first
+        admin = get_admin(username)
+        if admin and check_password_hash(admin["password"], password):
+            # Check if admin has pending temporary password reset
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM password_reset_tokens
+                WHERE username = ? AND user_type = 'admin' AND used = 0
+                  AND expires_at > ?
+            """, (username, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            pending_reset = cursor.fetchone()
+            conn.close()
             
-            pending_user = session.get("pending_login_user")
-            if not pending_user or pending_user != username:
-                return render_template("login.html", error="Session expired. Please start login again.")
+            if pending_reset:
+                flash("You must change your temporary password before continuing.", "warning")
+                return redirect(f"/admin/reset-password/{pending_reset['token']}")
             
-            if not otp_code or len(otp_code) != 6:
-                return render_template("login.html", 
-                                       step=2, 
-                                       username=username,
-                                       error="Please enter a valid 6-digit OTP code.")
+            # Existing force password change check
+            if admin.get("force_password_change") == 1:
+                session["force_change_user"] = username
+                return redirect(url_for("force_password_change"))
             
-            success, role, msg = verify_login_otp(username, otp_code)
-            
-            if not success:
-                log_login_attempt(username, "", False, f"Invalid OTP: {msg}")
-                return render_template("login.html", 
-                                       step=2, 
-                                       username=username,
-                                       error=msg)
-            
+            # DIRECT LOGIN — No OTP
             session.permanent = True
             session["username"] = username
-            session["role"] = role
+            session["role"] = admin["role"]
             
-            session.pop("pending_login_user", None)
-            session.pop("pending_login_role", None)
-            
-            # AUDIT: Log successful login
-            log_login_attempt(username, "", True)
-            
-            # VICE-SECRETARY NOTIFICATION: Notify when secretary logs in
-            if role == "user":
-                notify_vice_secretary_on_login(username)
-            
+            log_login_attempt(username, password, True)
             flash(f"Welcome, {username}!", "success")
             
-            if role == "superadmin":
+            if admin["role"] == "superadmin":
                 return redirect("/superadmin")
-            elif role == "admin":
-                return redirect("/admin")
             else:
-                return redirect("/user")
+                return redirect("/admin")
+        
+        # Check user
+        user = get_user(username)
+        if user and check_password_hash(user["password"], password):
+            # DIRECT LOGIN — No OTP
+            session.permanent = True
+            session["username"] = username
+            session["role"] = "user"
+            
+            log_login_attempt(username, password, True)
+            flash(f"Welcome, {username}!", "success")
+            return redirect("/user")
+        
+        # Failed login
+        log_login_attempt(username, password, False, "Invalid username or password")
+        return render_template("login.html", error="Invalid username or password")
     
-    return render_template("login.html", step=1)
+    return render_template("login.html")
     
 
 @app.route("/logout")
@@ -4196,19 +4134,8 @@ def create_user_admin():
         if not valid_branch:
             return render_template("create_user.html", error=cleaned_branch)
 
-        if not otp_code:
-            return render_template("create_user.html", error="OTP code is required.")
-
-        otp_verified = False
-        for email in [cleaned_sec_email, cleaned_vice_email]:
-            success, msg = verify_otp_code(email, otp_code, "user_creation")
-            if success:
-                otp_verified = True
-                break
-
-        if not otp_verified:
-            return render_template("create_user.html", error="Invalid or expired OTP code.")
-
+        # OTP verification REMOVED — emails are paused
+        
         if get_user(username) or get_admin(username):
             return render_template("create_user.html", error="Username already exists.")
 
@@ -4255,95 +4182,130 @@ def create_user_admin():
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    """Handle forgot password requests for both users and admins."""
+    """Handle forgot password requests. Admin approval required."""
     if request.method == "GET":
         return render_template("forgot_password.html")
     
-    # POST
     identifier = request.form.get("identifier", "").strip()
     
     if not identifier:
         flash("Please enter your username or email address.", "error")
         return redirect("/forgot-password")
     
-    # Try to identify if this is a user (by username/church name) or admin (by email)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    username = None
+    email = None
+    user_type = 'user'
     
-    # CASE 1: Check if it's a user's church name (username)
-    # CASE 1: Check if it's a user's church name (username)
-    # Also handle "superadmin" special case — look in admins table
-    if identifier.lower() == "superadmin":
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM admins WHERE username = 'superadmin'")
-        superadmin = cursor.fetchone()
-        conn.close()
-        
-        if superadmin and superadmin.get("email"):
-            email = superadmin["email"]
-            username = "superadmin"
-            
-            token = store_user_reset_token(username, email, user_type='admin')
-            sent = send_forgot_password_email(email, username, token, is_admin=True)
-            
-            if sent:
-                masked = mask_email(email)
-                flash(f"Password reset link sent to {masked}. Please check your inbox and spam folder. Link expires in 24 hours.", "success")
-                return redirect("/login")
-            else:
-                flash("Failed to send reset email. Please check SMTP configuration or contact support.", "error")
-                return redirect("/forgot-password")
-        else:
-            flash("Superadmin account has no email configured. Please check your .env file or contact system support.", "error")
-            return redirect("/forgot-password")
-    
-    # Normal user lookup by church name
-    user = get_user_by_username(identifier)
+    # Try user by username
+    cursor.execute("SELECT username, secretary_email, vice_secretary_email FROM users WHERE username = ?", (identifier,))
+    user = cursor.fetchone()
     if user:
-        # Found a user — get their secretary email
-        email = user.get("secretary_email") or user.get("vice_secretary_email")
         username = user["username"]
-        
-        if not email:
-            flash(f"No email address on file for '{username}'. Please contact your administrator.", "error")
-            return redirect("/forgot-password")
-        
-        # Generate token and send
-        token = store_user_reset_token(username, email, user_type='user')
-        sent = send_forgot_password_email(email, username, token, is_admin=False)
-        
-        if sent:
-            masked = mask_email(email)
-            flash(f"Password reset link sent to {masked}. Please check your inbox and spam folder. Link expires in 24 hours.", "success")
-            return redirect("/login")
-        else:
-            flash("Failed to send reset email. Please try again later or contact support.", "error")
-            return redirect("/forgot-password")
-    
-    # CASE 2: Check if it's an admin/superadmin email
-    # First validate it looks like an email
-    valid_email, cleaned_email = validate_email(identifier)
-    if valid_email:
-        admin = get_admin_by_email(cleaned_email)
+        email = user["secretary_email"] or user["vice_secretary_email"]
+    else:
+        # Try admin by username or email
+        cursor.execute("SELECT username, email FROM admins WHERE username = ? OR email = ?", (identifier, identifier))
+        admin = cursor.fetchone()
         if admin:
             username = admin["username"]
             email = admin["email"]
-            
-            # Generate token and send
-            token = store_user_reset_token(username, email, user_type='admin')
-            sent = send_forgot_password_email(email, username, token, is_admin=True)
-            
-            if sent:
-                masked = mask_email(email)
-                flash(f"Password reset link sent to {masked}. Please check your inbox and spam folder. Link expires in 24 hours.", "success")
-                return redirect("/login")
-            else:
-                flash("Failed to send reset email. Please try again later or contact support.", "error")
-                return redirect("/forgot-password")
+            user_type = 'admin'
     
-    # CASE 3: User entered something that doesn't match anything
-    # For security, we don't reveal whether the username/email exists
-    flash("If an account exists with that information, a password reset link has been sent to the registered email.", "info")
+    if not username:
+        # Don't reveal if account exists
+        flash("If an account exists with that information, a password reset request has been submitted for admin approval.", "info")
+        conn.close()
+        return redirect("/login")
+    
+    # Check for existing pending request
+    cursor.execute("""
+        SELECT id FROM password_reset_requests 
+        WHERE username = ? AND status = 'pending'
+    """, (username,))
+    if cursor.fetchone():
+        flash("A password reset request is already pending admin approval.", "info")
+        conn.close()
+        return redirect("/login")
+    
+    # Store request
+    cursor.execute("""
+        INSERT INTO password_reset_requests (username, email, user_type, status)
+        VALUES (?, ?, ?, 'pending')
+    """, (username, email, user_type))
+    conn.commit()
+    conn.close()
+    
+    flash("Password reset request submitted. An admin will review and approve it. You will be notified when approved.", "success")
     return redirect("/login")
+
+
+@app.route("/admin/password-reset-requests")
+@admin_required
+def admin_password_reset_requests():
+    """View pending password reset requests."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM password_reset_requests 
+        ORDER BY requested_at DESC
+    """)
+    requests = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return render_template("admin_reset_requests.html", requests=requests)
+
+@app.route("/admin/approve-reset-request/<int:request_id>", methods=["POST"])
+@admin_required
+def approve_reset_request(request_id):
+    """Approve a password reset request and generate a token."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM password_reset_requests WHERE id = ?", (request_id,))
+    req = cursor.fetchone()
+    
+    if not req:
+        conn.close()
+        flash("Request not found.", "error")
+        return redirect("/admin/password-reset-requests")
+    
+    if req["status"] != "pending":
+        conn.close()
+        flash("This request has already been processed.", "warning")
+        return redirect("/admin/password-reset-requests")
+    
+    # Generate token
+    token = generate_reset_token()
+    expires = datetime.now() + timedelta(hours=24)
+    
+    # Store token in password_reset_tokens table (existing)
+    cursor.execute("""
+        INSERT INTO password_reset_tokens (username, token, email, created_at, expires_at, user_type)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (req["username"], token, req["email"] or "", 
+          datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          expires.strftime("%Y-%m-%d %H:%M:%S"),
+          req["user_type"]))
+    
+    # Update request
+    cursor.execute("""
+        UPDATE password_reset_requests 
+        SET status = 'approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP, reset_token = ?
+        WHERE id = ?
+    """, (session["username"], token, request_id))
+    
+    conn.commit()
+    conn.close()
+    
+    # Build reset URL
+    if req["user_type"] == 'admin':
+        reset_url = f"/admin-reset-password/{token}"
+    else:
+        reset_url = f"/reset-password/{token}"
+    
+    flash(f"Reset request approved. Token: {token}. Share this link with the user: {reset_url}", "success")
+    return redirect("/admin/password-reset-requests")
 
 
 @app.route("/admin-reset-password/<token>", methods=["GET", "POST"])

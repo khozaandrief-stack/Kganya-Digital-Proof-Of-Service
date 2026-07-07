@@ -134,7 +134,7 @@
                     <input type="email" id="secretary_email" name="secretary_email" class="form-control"
                            placeholder="secretary@email.com" required
                            value="{{ request.form.secretary_email or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
-                    <div class="field-note">OTP will be sent here</div>
+                    <div class="field-note">Email (verification paused — admin will review)</div>
                 </div>
             </div>
 
@@ -152,7 +152,7 @@
                     <input type="email" id="vice_secretary_email" name="vice_secretary_email" class="form-control"
                            placeholder="vice@email.com" required
                            value="{{ request.form.vice_secretary_email or '' }}" {% if not registrations_open %}disabled readonly{% endif %}>
-                    <div class="field-note">OTP will be sent here</div>
+                    <div class="field-note">Email (verification paused — admin will review)</div>
                 </div>
             </div>
 
@@ -182,20 +182,24 @@
                 <div class="field-note">e.g. Main Branch, North Branch</div>
             </div>
 
-            <!-- OTP Section -->
-            <div class="otp-section" id="otpSection">
-                <label for="otp_code">Enter Email OTP Code</label>
+            <!-- OTP Section — DISABLED (Email paused) -->
+            <div class="otp-section" id="otpSection" style="opacity: 0.5; pointer-events: none;">
+                <label for="otp_code" style="color: rgba(255,255,255,0.5);">
+                    🔒 Email Verification (Temporarily Unavailable)
+                </label>
                 <div class="otp-input-group">
                     <input type="text" id="otp_code" name="otp_code" class="form-control"
-                           placeholder="000000" maxlength="6" pattern="[0-9]{6}"
-                           autocomplete="one-time-code" {% if not registrations_open %}disabled readonly{% endif %}>
+                           placeholder="000000" maxlength="6" disabled readonly
+                           style="background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.4);">
                 </div>
-                <div class="otp-timer" id="otpTimer"></div>
-                <div class="otp-status" id="otpStatus"></div>
+                <div class="otp-status" style="color: rgba(255,255,255,0.5); font-size: 12px;">
+                    Email verification is paused. Your registration will be reviewed by an admin.
+                </div>
             </div>
 
-            <button type="button" class="btn-primary otp-btn" id="sendOtpBtn" onclick="sendOTP()" {% if not registrations_open %}disabled{% endif %}>
-                📧 Send OTP to Email
+            <button type="button" class="btn-primary otp-btn" id="sendOtpBtn" disabled
+                    style="background: #6c757d !important; cursor: not-allowed; opacity: 0.6;">
+                📧 Email Verification Paused
             </button>
 
             <button type="submit" class="btn-primary" id="submitBtn" style="margin-top:15px;" {% if not registrations_open %}disabled{% endif %}>
@@ -255,6 +259,10 @@ function startOtpTimer() {
 }
 
 async function sendOTP() {
+    // Email sending is paused — do nothing
+    alert("Email verification is temporarily unavailable. Your registration will be reviewed by an admin.");
+    return;
+    
     const secEmail = document.getElementById('secretary_email').value.trim();
     const viceEmail = document.getElementById('vice_secretary_email').value.trim();
     const sendBtn = document.getElementById('sendOtpBtn');
