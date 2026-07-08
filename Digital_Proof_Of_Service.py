@@ -257,6 +257,7 @@ def init_db():
             church_code TEXT,
             church_file_number TEXT UNIQUE,
             church_branch_name TEXT,
+            force_password_change INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -710,6 +711,10 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+    except:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN force_password_change INTEGER DEFAULT 0")
     except:
         pass
     # ── Add completed_at to receipt_booklets if missing ──
@@ -1452,9 +1457,9 @@ def create_user(username, password, secretary_phone, vice_secretary_phone, secre
     hashed = generate_password_hash(password)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-        INSERT INTO users (username, password, secretary_phone, vice_secretary_phone, secretary_email, vice_secretary_email, church_code, church_file_number, church_branch_name, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (username, hashed, secretary_phone, vice_secretary_phone, secretary_email, vice_secretary_email, church_code, church_file_number, church_branch_name, now))
+        INSERT INTO users (username, password, secretary_phone, vice_secretary_phone, secretary_email, vice_secretary_email, church_code, church_file_number, church_branch_name, force_password_change, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (username, hashed, secretary_phone, vice_secretary_phone, secretary_email, vice_secretary_email, church_code, church_file_number, church_branch_name, 1, now))
     conn.commit()
     conn.close()
 
@@ -2929,6 +2934,42 @@ def manage_booklets():
     import json
     stats_json = json.dumps(stats)
     
+    # ── Ensure 2 consecutive active booklets per product (same as user view) ──
+    cursor.execute("""
+        SELECT DISTINCT user_id, product_name 
+        FROM receipt_booklets 
+        ORDER BY user_id, product_name
+    """)
+    user_products = cursor.fetchall()
+
+    for up in user_products:
+        uid = up["user_id"]
+        product = up["product_name"]
+        cursor.execute("""
+            SELECT id, booklet_number, receipt_from, receipt_to, is_active
+            FROM receipt_booklets
+            WHERE user_id = ? AND product_name = ? AND is_completed = 0
+            ORDER BY CAST(booklet_number AS INTEGER) ASC
+        """, (uid, product))
+        product_booklets = cursor.fetchall()
+
+        for i, pb in enumerate(product_booklets):
+            if i < 2:
+                if pb["is_active"] == 0:
+                    cursor.execute("""
+                        UPDATE receipt_booklets 
+                        SET is_active = 1, next_expected_receipt = ?
+                        WHERE id = ?
+                    """, (pb["receipt_from"], pb["id"]))
+            else:
+                if pb["is_active"] == 1:
+                    cursor.execute("""
+                        UPDATE receipt_booklets 
+                        SET is_active = 0
+                        WHERE id = ?
+                    """, (pb["id"],))
+
+    conn.commit()
     conn.close()
     return render_template("admin_booklets.html", booklets=booklets, users=users, products=products, stats_json=stats_json)
 
@@ -3387,6 +3428,53 @@ def view_booklet_progress(user_id):
 #===================================================================================================
 
 
+
+# =========================================
+# AUTO-BACKUP FUNCTION
+# =========================================
+
+import shutil
+import glob
+
+def auto_backup_db():
+    """
+    Create a timestamped backup of the database.
+    Keeps only the last 50 backups to prevent disk bloat.
+    Call this after login and logout.
+    """
+    try:
+        if not os.path.exists(DB_PATH):
+            return  # Database doesn't exist yet
+
+        backup_dir = os.path.join(os.path.dirname(DB_PATH), "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"database_backup_{timestamp}.db"
+        backup_path = os.path.join(backup_dir, backup_filename)
+
+        # Copy database file
+        shutil.copy2(DB_PATH, backup_path)
+
+        # Keep only last 50 backups (delete oldest)
+        backup_files = sorted(
+            glob.glob(os.path.join(backup_dir, "database_backup_*.db")),
+            key=os.path.getmtime
+        )
+
+        while len(backup_files) > 50:
+            oldest = backup_files.pop(0)
+            try:
+                os.remove(oldest)
+            except:
+                pass
+
+        print(f"[AUTO-BACKUP] Created: {backup_filename}")
+
+    except Exception as e:
+        print(f"[AUTO-BACKUP] Failed: {e}")
+        # Non-critical: don't crash the app if backup fails
+
 # =========================================
 # TEMPLATE CONTEXT PROCESSOR
 # =========================================
@@ -3722,6 +3810,7 @@ def login():
             session["role"] = admin["role"]
             
             log_login_attempt(username, password, True)
+            auto_backup_db()  # <-- BACKUP ON LOGIN
             flash(f"Welcome, {username}!", "success")
             
             if admin["role"] == "superadmin":
@@ -3732,15 +3821,22 @@ def login():
         # Check user
         user = get_user(username)
         if user and check_password_hash(user["password"], password):
+            # Check if user must change temporary password
+            if user.get("force_password_change") == 1:
+                session["force_change_user"] = username
+                session["force_change_role"] = "user"
+                return redirect(url_for("force_password_change"))
+
             # DIRECT LOGIN — No OTP
             session.permanent = True
             session["username"] = username
             session["role"] = "user"
-            
+
             log_login_attempt(username, password, True)
+            auto_backup_db()  # <-- BACKUP ON LOGIN
             flash(f"Welcome, {username}!", "success")
             return redirect("/user")
-        
+
         # Failed login
         log_login_attempt(username, password, False, "Invalid username or password")
         return render_template("login.html", error="Invalid username or password")
@@ -3762,6 +3858,7 @@ def logout():
 
     perform_backup()
 
+    auto_backup_db()  # <-- BACKUP ON LOGOUT
     flash("You have been logged out.", "info")
     session.clear()
     response = redirect("/login")
@@ -3770,45 +3867,61 @@ def logout():
 
 @app.route('/force-password-change', methods=['GET', 'POST'])
 def force_password_change():
-    # Check if user is allowed to be here (either force_change_user or logged in superadmin)
+    # Check if user is allowed to be here
     username = session.get("force_change_user")
-    
+    role = session.get("force_change_role", "admin")
+
     if not username:
         # Fallback: check if logged-in user has force_password_change flag
-        if session.get("username") and session.get("role") == "superadmin":
-            username = session["username"]
-            # Check if flag is still set
-            admin = get_admin(username)
-            if not admin or admin.get("force_password_change") != 1:
-                return redirect(url_for("dashboard"))
+        if session.get("username"):
+            current_user = session["username"]
+            current_role = session.get("role", "user")
+            if current_role == "superadmin":
+                admin = get_admin(current_user)
+                if admin and admin.get("force_password_change") == 1:
+                    username = current_user
+                    role = "admin"
+            elif current_role == "user":
+                user = get_user(current_user)
+                if user and user.get("force_password_change") == 1:
+                    username = current_user
+                    role = "user"
+            if not username:
+                return redirect(url_for("login"))
         else:
             return redirect(url_for("login"))
-    
+
     if request.method == 'POST':
         new_password = request.form.get('new_password', '').strip()
         confirm_password = request.form.get('confirm_password', '').strip()
-        
+
         if not new_password or not confirm_password:
             return render_template('force_password_change.html', error='Both password fields are required.')
-        
+
         if new_password != confirm_password:
             return render_template('force_password_change.html', error='Passwords do not match.')
-        
+
         if len(new_password) < 8:
             return render_template('force_password_change.html', error='Password must be at least 8 characters.')
-        
+
         # Update password and clear force_change flag
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE admins SET password = ?, force_password_change = 0 WHERE username = ?
-        """, (generate_password_hash(new_password), username))
+        if role == "user":
+            cursor.execute("""
+                UPDATE users SET password = ?, force_password_change = 0 WHERE username = ?
+            """, (generate_password_hash(new_password), username))
+        else:
+            cursor.execute("""
+                UPDATE admins SET password = ?, force_password_change = 0 WHERE username = ?
+            """, (generate_password_hash(new_password), username))
         conn.commit()
         conn.close()
-        
+
         # Clear the force_change session
         session.pop("force_change_user", None)
-        
+        session.pop("force_change_role", None)
+
         # AUDIT: Log password change
         log_audit_event(
             "FORCE_PASSWORD_CHANGE",
@@ -3816,17 +3929,12 @@ def force_password_change():
             action_category="authentication",
             username=username
         )
-        
+
         flash("Password changed successfully. Please log in with your new password.", "success")
         return redirect(url_for("login"))
-    
+
     return render_template('force_password_change.html')
 
-# =========================================
-# ROUTES: HOME / DASHBOARD
-# =========================================
-
-@app.route("/")
 def home():
     if "username" in session:
         if session.get("role") in ["admin", "superadmin"]:
@@ -4583,8 +4691,9 @@ def my_pos_files():
 @admin_required
 def all_pos_files():
     organized_by_user = get_all_pos_by_user()
-    return render_template("pos_files_admin.html",
-                           organized_by_user=organized_by_user,
+    return render_template("pos_files_organized.html",
+                           organized_pos=organized_by_user,
+                           is_admin=True,
                            username=session["username"])
 
 

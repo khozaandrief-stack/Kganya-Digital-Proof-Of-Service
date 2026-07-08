@@ -1,185 +1,203 @@
 {% extends "base.html" %}
 
-{% block title %}My POS Files — KGANYA{% endblock %}
+{% block title %}{% if is_admin %}All POS Files — Admin{% else %}My POS Files{% endif %} — KGANYA{% endblock %}
 
+{% macro month_table(month_data) %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>POS #</th>
+                    <th>Bank<br>Sheet</th>
+                    <th>Date</th>
+                    <th>Banking</th>
+                    <th>Banking<br>Status</th>
+                    <th>Parish</th>
+                    <th>Excess<br>Parish</th>
+                    <th>Parish<br>Loss</th>
+                    <th>Parish<br>Status</th>
+                    <th>Expenses</th>
+                    <th>Net<br>Parish</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set monthly_banking = namespace(total=0) %}
+                {% set monthly_parish = namespace(total=0) %}
+                {% set monthly_excess_parish = namespace(total=0) %}
+                {% set monthly_parish_loss = namespace(total=0) %}
+                {% set monthly_expenses = namespace(total=0) %}
+                {% set monthly_net_parish = namespace(total=0) %}
+
+                {% for record in month_data.records %}
+                    {% set monthly_banking.total = monthly_banking.total + record.total_banking %}
+                    {% set monthly_parish.total = monthly_parish.total + record.total_parish %}
+                    {% set monthly_expenses.total = monthly_expenses.total + (record.total_expenses or 0) %}
+
+                    {% set ns = namespace(excess_amount=0.0, loss_amount=0.0, status_text='—', status_color='#888') %}
+
+                    {% set remark = record.minister_remarks or '' %}
+                    {% set conclusion = record.final_conclusion or '' %}
+                    {% set status = record.final_status or '' %}
+
+                    {% if 'Over by' in remark %}
+                        {% set parts = remark.split('R ') %}
+                        {% if parts|length > 1 %}
+                            {% set num_str = parts[1].split(' ')[0].strip() %}
+                            {% if num_str and num_str|float != 0 %}
+                                {% set ns.excess_amount = num_str|float %}
+                                {% set ns.status_text = remark %}
+                                {% set ns.status_color = 'red' %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif 'Short by' in remark %}
+                        {% set parts = remark.split('R ') %}
+                        {% if parts|length > 1 %}
+                            {% set num_str = parts[1].split(' ')[0].strip() %}
+                            {% if num_str and num_str|float != 0 %}
+                                {% set ns.loss_amount = num_str|float %}
+                                {% set ns.status_text = remark %}
+                                {% set ns.status_color = 'red' %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif 'Perfect' in remark %}
+                        {% set ns.status_text = remark %}
+                        {% set ns.status_color = 'blue' %}
+                    {% endif %}
+
+                    {% if ns.status_text == '—' and conclusion %}
+                        {% if 'EXCESS' in conclusion|upper %}
+                            {% set parts = conclusion.split('R ') %}
+                            {% if parts|length > 1 %}
+                                {% set num_str = parts[1].strip() %}
+                                {% if num_str and num_str|float != 0 %}
+                                    {% set ns.excess_amount = num_str|float %}
+                                    {% set ns.status_text = conclusion %}
+                                    {% set ns.status_color = 'red' %}
+                                {% endif %}
+                            {% endif %}
+                        {% elif 'LOSS' in conclusion|upper %}
+                            {% set parts = conclusion.split('R ') %}
+                            {% if parts|length > 1 %}
+                                {% set num_str = parts[1].strip() %}
+                                {% if num_str and num_str|float != 0 %}
+                                    {% set ns.loss_amount = num_str|float %}
+                                    {% set ns.status_text = conclusion %}
+                                    {% set ns.status_color = 'red' %}
+                                {% endif %}
+                            {% endif %}
+                        {% elif 'BALANCED' in conclusion|upper %}
+                            {% set ns.status_text = conclusion %}
+                            {% set ns.status_color = 'blue' %}
+                        {% endif %}
+                    {% endif %}
+
+                    {% if ns.status_text == '—' and status %}
+                        {% set ns.status_text = status %}
+                        {% if 'LOSS' in status|upper or 'EXCESS' in status|upper %}
+                            {% set ns.status_color = 'red' %}
+                        {% elif 'BALANCED' in status|upper %}
+                            {% set ns.status_color = 'blue' %}
+                        {% endif %}
+                    {% endif %}
+
+                    {% set monthly_excess_parish.total = monthly_excess_parish.total + ns.excess_amount %}
+                    {% set monthly_parish_loss.total = monthly_parish_loss.total + ns.loss_amount %}
+
+                    {% set row_net_parish = record.total_parish + ns.excess_amount - ns.loss_amount - (record.total_expenses or 0) %}
+                    {% set monthly_net_parish.total = monthly_net_parish.total + row_net_parish %}
+
+                <tr>
+                    <td><strong>{{ record.pos_number }}</strong></td>
+                    <td>{{ record.bank_sheet or '—' }}</td>
+                    <td class="date-cell" style="text-align: center;">
+                        {% if record.created_at %}
+                            {% set date_str = record.created_at|string %}
+                            {% if ' ' in date_str %}
+                                {% set date_part = date_str.split(' ')[0] %}
+                                {% set time_part = date_str.split(' ')[1] %}
+                                {{ date_part }}<br><span style="color: #aaa; font-size: 0.85rem;">{{ time_part }}</span>
+                            {% else %}
+                                {{ date_str }}
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>R {{ "%.2f"|format(record.total_banking) }}</td>
+                    <td style="{% if (record.total_outstanding or 0) > 0 %}color: red;{% else %}color: blue;{% endif %} font-weight: bold;">
+                        {% if (record.total_outstanding or 0) > 0 %}Underbanking{% else %}Sufficient{% endif %}
+                    </td>
+                    <td>R {{ "%.2f"|format(record.total_parish) }}</td>
+                    <td style="{% if ns.excess_amount > 0 %}color: blue; font-weight: bold;{% else %}color: #888;{% endif %}">
+                        {% if ns.excess_amount > 0 %}R {{ "%.2f"|format(ns.excess_amount) }}{% else %}—{% endif %}
+                    </td>
+                    <td style="{% if ns.loss_amount > 0 %}color: red; font-weight: bold;{% else %}color: #888;{% endif %}">
+                        {% if ns.loss_amount > 0 %}R {{ "%.2f"|format(ns.loss_amount) }}{% else %}—{% endif %}
+                    </td>
+                    <td style="color: {{ ns.status_color }}; font-weight: bold;">
+                        {{ ns.status_text }}
+                    </td>
+                    <td style="{% if (record.total_expenses or 0) > 0 %}color: #ff6b6b; font-weight: bold;{% else %}color: #888;{% endif %}">
+                        R {{ "%.2f"|format(record.total_expenses or 0) }}
+                    </td>
+                    <td style="{% if row_net_parish >= 0 %}color: lightgreen;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R {{ "%.2f"|format(row_net_parish) }}
+                    </td>
+                    <td>
+                        <a href="/view-pos/{{ record.id }}"><button style="margin-top:0;">View</button></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: rgba(30, 58, 95, 0.6); font-weight: bold;">
+                    <td colspan="3" style="text-align: right; color: lightgoldenrodyellow;">Monthly Totals:</td>
+                    <td style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(monthly_banking.total) }}</td>
+                    <td>—</td>
+                    <td style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(monthly_parish.total) }}</td>
+                    <td style="color: blue;">R {{ "%.2f"|format(monthly_excess_parish.total) }}</td>
+                    <td style="color: red;">R {{ "%.2f"|format(monthly_parish_loss.total) }}</td>
+                    <td>—</td>
+                    <td style="color: #ff6b6b;">R {{ "%.2f"|format(monthly_expenses.total) }}</td>
+                    <td style="color: lightgreen; font-weight: bold;">R {{ "%.2f"|format(monthly_net_parish.total) }}</td>
+                    <td>—</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+{% endmacro %}
 
 {% block content %}
 <div class="container">
-    <h1>My POS Files</h1>
-    <h3>Organized by year and month</h3>
+    <h1>{% if is_admin %}All POS Files{% else %}My POS Files{% endif %}</h1>
+    <h3>{% if is_admin %}Organized by user, year and month{% else %}Organized by year and month{% endif %}</h3>
 
     {% if organized_pos %}
-        {% for year, months in organized_pos.items() %}
-        <div class="section-title" style="font-weight: bold; color: yellow;">📅 {{ year }}</div>
-        {% for month_num, month_data in months.items() %}
-            <h3 style="color: lightgoldenrodyellow; text-align: left; margin-top: 20px;">{{ month_data.name }}</h3>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>POS #</th>
-                            <th>Bank<br>Sheet</th>
-                            <th>Date</th>
-                            <th>Banking</th>
-                            <th>Banking<br>Status</th>
-                            <th>Parish</th>
-                            <th>Excess<br>Parish</th>
-                            <th>Parish<br>Loss</th>
-                            <th>Parish<br>Status</th>
-                            <th>Expenses</th>
-                            <th>Net<br>Parish</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set monthly_banking = namespace(total=0) %}
-                        {% set monthly_parish = namespace(total=0) %}
-                        {% set monthly_excess_parish = namespace(total=0) %}
-                        {% set monthly_parish_loss = namespace(total=0) %}
-                        {% set monthly_expenses = namespace(total=0) %}
-                        {% set monthly_net_parish = namespace(total=0) %}
-
-                        {% for record in month_data.records %}
-                            {% set monthly_banking.total = monthly_banking.total + record.total_banking %}
-                            {% set monthly_parish.total = monthly_parish.total + record.total_parish %}
-                            {% set monthly_expenses.total = monthly_expenses.total + (record.total_expenses or 0) %}
-
-                            {% set ns = namespace(excess_amount=0.0, loss_amount=0.0, status_text='—', status_color='#888') %}
-
-                            {% set remark = record.minister_remarks or '' %}
-                            {% set conclusion = record.final_conclusion or '' %}
-                            {% set status = record.final_status or '' %}
-
-                            {% if 'Over by' in remark %}
-                                {% set parts = remark.split('R ') %}
-                                {% if parts|length > 1 %}
-                                    {% set num_str = parts[1].split(' ')[0].strip() %}
-                                    {% if num_str and num_str|float != 0 %}
-                                        {% set ns.excess_amount = num_str|float %}
-                                        {% set ns.status_text = remark %}
-                                        {% set ns.status_color = 'red' %}
-                                    {% endif %}
-                                {% endif %}
-                            {% elif 'Short by' in remark %}
-                                {% set parts = remark.split('R ') %}
-                                {% if parts|length > 1 %}
-                                    {% set num_str = parts[1].split(' ')[0].strip() %}
-                                    {% if num_str and num_str|float != 0 %}
-                                        {% set ns.loss_amount = num_str|float %}
-                                        {% set ns.status_text = remark %}
-                                        {% set ns.status_color = 'red' %}
-                                    {% endif %}
-                                {% endif %}
-                            {% elif 'Perfect' in remark %}
-                                {% set ns.status_text = remark %}
-                                {% set ns.status_color = 'blue' %}
-                            {% endif %}
-
-                            {% if ns.status_text == '—' and conclusion %}
-                                {% if 'EXCESS' in conclusion|upper %}
-                                    {% set parts = conclusion.split('R ') %}
-                                    {% if parts|length > 1 %}
-                                        {% set num_str = parts[1].strip() %}
-                                        {% if num_str and num_str|float != 0 %}
-                                            {% set ns.excess_amount = num_str|float %}
-                                            {% set ns.status_text = conclusion %}
-                                            {% set ns.status_color = 'red' %}
-                                        {% endif %}
-                                    {% endif %}
-                                {% elif 'LOSS' in conclusion|upper %}
-                                    {% set parts = conclusion.split('R ') %}
-                                    {% if parts|length > 1 %}
-                                        {% set num_str = parts[1].strip() %}
-                                        {% if num_str and num_str|float != 0 %}
-                                            {% set ns.loss_amount = num_str|float %}
-                                            {% set ns.status_text = conclusion %}
-                                            {% set ns.status_color = 'red' %}
-                                        {% endif %}
-                                    {% endif %}
-                                {% elif 'BALANCED' in conclusion|upper %}
-                                    {% set ns.status_text = conclusion %}
-                                    {% set ns.status_color = 'blue' %}
-                                {% endif %}
-                            {% endif %}
-
-                            {% if ns.status_text == '—' and status %}
-                                {% set ns.status_text = status %}
-                                {% if 'LOSS' in status|upper or 'EXCESS' in status|upper %}
-                                    {% set ns.status_color = 'red' %}
-                                {% elif 'BALANCED' in status|upper %}
-                                    {% set ns.status_color = 'blue' %}
-                                {% endif %}
-                            {% endif %}
-
-                            {% set monthly_excess_parish.total = monthly_excess_parish.total + ns.excess_amount %}
-                            {% set monthly_parish_loss.total = monthly_parish_loss.total + ns.loss_amount %}
-
-                            {% set row_net_parish = record.total_parish + ns.excess_amount - ns.loss_amount - (record.total_expenses or 0) %}
-                            {% set monthly_net_parish.total = monthly_net_parish.total + row_net_parish %}
-
-                        <tr>
-                            <td><strong>{{ record.pos_number }}</strong></td>
-                            <td>{{ record.bank_sheet or '—' }}</td>
-                            <td class="date-cell" style="text-align: center;">
-                                {% if record.created_at %}
-                                    {% set date_str = record.created_at|string %}
-                                    {% if ' ' in date_str %}
-                                        {% set date_part = date_str.split(' ')[0] %}
-                                        {% set time_part = date_str.split(' ')[1] %}
-                                        {{ date_part }}<br><span style="color: #aaa; font-size: 0.85rem;">{{ time_part }}</span>
-                                    {% else %}
-                                        {{ date_str }}
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>R {{ "%.2f"|format(record.total_banking) }}</td>
-                            <td style="{% if (record.total_outstanding or 0) > 0 %}color: red;{% else %}color: blue;{% endif %} font-weight: bold;">
-                                {% if (record.total_outstanding or 0) > 0 %}Underbanking{% else %}Sufficient{% endif %}
-                            </td>
-                            <td>R {{ "%.2f"|format(record.total_parish) }}</td>
-                            <td style="{% if ns.excess_amount > 0 %}color: blue; font-weight: bold;{% else %}color: #888;{% endif %}">
-                                {% if ns.excess_amount > 0 %}R {{ "%.2f"|format(ns.excess_amount) }}{% else %}—{% endif %}
-                            </td>
-                            <td style="{% if ns.loss_amount > 0 %}color: red; font-weight: bold;{% else %}color: #888;{% endif %}">
-                                {% if ns.loss_amount > 0 %}R {{ "%.2f"|format(ns.loss_amount) }}{% else %}—{% endif %}
-                            </td>
-                            <td style="color: {{ ns.status_color }}; font-weight: bold;">
-                                {{ ns.status_text }}
-                            </td>
-                            <td style="{% if (record.total_expenses or 0) > 0 %}color: #ff6b6b; font-weight: bold;{% else %}color: #888;{% endif %}">
-                                R {{ "%.2f"|format(record.total_expenses or 0) }}
-                            </td>
-                            <td style="{% if row_net_parish >= 0 %}color: lightgreen;{% else %}color: red;{% endif %} font-weight: bold;">
-                                R {{ "%.2f"|format(row_net_parish) }}
-                            </td>
-                            <td>
-                                <a href="/view-pos/{{ record.id }}"><button style="margin-top:0;">View</button></a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr style="background: rgba(30, 58, 95, 0.6); font-weight: bold;">
-                            <td colspan="3" style="text-align: right; color: lightgoldenrodyellow;">Monthly Totals:</td>
-                            <td style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(monthly_banking.total) }}</td>
-                            <td>—</td>
-                            <td style="color: lightgoldenrodyellow;">R {{ "%.2f"|format(monthly_parish.total) }}</td>
-                            <td style="color: blue;">R {{ "%.2f"|format(monthly_excess_parish.total) }}</td>
-                            <td style="color: red;">R {{ "%.2f"|format(monthly_parish_loss.total) }}</td>
-                            <td>—</td>
-                            <td style="color: #ff6b6b;">R {{ "%.2f"|format(monthly_expenses.total) }}</td>
-                            <td style="color: lightgreen; font-weight: bold;">R {{ "%.2f"|format(monthly_net_parish.total) }}</td>
-                            <td>—</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        {% endfor %}
-        {% endfor %}
+        {% if is_admin %}
+            {# ADMIN VIEW: organized_pos = {user_name: {year: {month: {name, records}}}} #}
+            {% for user_name, years in organized_pos.items() %}
+            <div class="section-title" style="font-weight: bold; color: yellow;">👤 {{ user_name }}</div>
+            {% for year, months in years.items() %}
+                <h3 style="color: lightgoldenrodyellow; text-align: left; margin-top: 20px;">📅 {{ year }}</h3>
+                {% for month_num, month_data in months.items() %}
+                    <h4 style="color: lightgoldenrodyellow; text-align: left; margin-top: 15px; margin-left: 20px;">{{ month_data.name }}</h4>
+                    {{ month_table(month_data) }}
+                {% endfor %}
+            {% endfor %}
+            {% endfor %}
+        {% else %}
+            {# USER VIEW: organized_pos = {year: {month: {name, records}}} #}
+            {% for year, months in organized_pos.items() %}
+            <div class="section-title" style="font-weight: bold; color: yellow;">📅 {{ year }}</div>
+            {% for month_num, month_data in months.items() %}
+                <h3 style="color: lightgoldenrodyellow; text-align: left; margin-top: 20px;">{{ month_data.name }}</h3>
+                {{ month_table(month_data) }}
+            {% endfor %}
+            {% endfor %}
+        {% endif %}
     {% else %}
-    <p style="color: white; text-align: center; padding: 40px;">No POS records found. <a href="/create-pos"><button>Create POS</button></a></p>
+        <p style="color: white; text-align: center; padding: 40px;">No POS records found. {% if not is_admin %}<a href="/create-pos"><button>Create POS</button></a>{% endif %}</p>
     {% endif %}
 </div>
 {% endblock %}
