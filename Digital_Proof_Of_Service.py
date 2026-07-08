@@ -3769,6 +3769,10 @@ def clear_all_pos():
         traceback.print_exc()
         return jsonify({"success": False, "message": f"Error clearing POS files: {str(e)}"}), 500
 
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
+
     
 @app.route("/login", methods=["GET", "POST"])
 def login():
