@@ -6538,7 +6538,7 @@ def cleanup_orphaned_booklet_records():
 # FIXED: Cascade delete user booklet data to prevent future orphans
 # =========================================
 
-@app.route("/delete-user/<int:user_id>")
+@app.route("/delete-user/<int:user_id>", methods=["POST"])
 @superadmin_required
 def delete_user(user_id):
     conn = get_db_connection()
@@ -6555,63 +6555,39 @@ def delete_user(user_id):
     
     username = user['username']
     
-    # ============================================================
-    # 1. GET ALL POS RECORDS FOR THIS USER (to delete files later)
-    # ============================================================
+    # 1. GET ALL POS RECORDS FOR THIS USER
     cursor.execute("SELECT id, file_path, html_file_path FROM pos_records WHERE created_by = ?", (username,))
     pos_records = cursor.fetchall()
     pos_record_ids = [r['id'] for r in pos_records]
     
-    # ============================================================
     # 2. COLLECT ALL FILE PATHS TO DELETE FROM DISK
-    # ============================================================
     files_to_delete = []
     
-    # POS record files (PDF/HTML)
     for r in pos_records:
         if r['file_path']:
             files_to_delete.append(r['file_path'])
         if r['html_file_path']:
             files_to_delete.append(r['html_file_path'])
     
-    # Upload files linked to these POS records
     if pos_record_ids:
         placeholders = ','.join('?' * len(pos_record_ids))
-        cursor.execute(f"""
-            SELECT file_path FROM pos_uploads 
-            WHERE pos_record_id IN ({placeholders})
-        """, pos_record_ids)
+        cursor.execute(f"SELECT file_path FROM pos_uploads WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
         for row in cursor.fetchall():
             if row['file_path']:
                 files_to_delete.append(row['file_path'])
     
-    # ============================================================
     # 3. DELETE POS-RELATED DATABASE RECORDS (child tables first)
-    # ============================================================
     if pos_record_ids:
         placeholders = ','.join('?' * len(pos_record_ids))
         
-        # pos_expenses (has FK to pos_uploads, delete first)
-        cursor.execute(f"DELETE FROM pos_expenses WHERE pos_record_id IN ({placeholders})", pos_record_ids)
-        
-        # pos_uploads
-        cursor.execute(f"DELETE FROM pos_uploads WHERE pos_record_id IN ({placeholders})", pos_record_ids)
-        
-        # pos_cash_rows
-        cursor.execute(f"DELETE FROM pos_cash_rows WHERE pos_record_id IN ({placeholders})", pos_record_ids)
-        
-        # pos_cancelled_receipts
-        cursor.execute(f"DELETE FROM pos_cancelled_receipts WHERE pos_record_id IN ({placeholders})", pos_record_ids)
-        
-        # pos_items
-        cursor.execute(f"DELETE FROM pos_items WHERE pos_record_id IN ({placeholders})", pos_record_ids)
-        
-        # pos_records (parent)
-        cursor.execute(f"DELETE FROM pos_records WHERE id IN ({placeholders})", pos_record_ids)
+        cursor.execute(f"DELETE FROM pos_expenses WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
+        cursor.execute(f"DELETE FROM pos_uploads WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
+        cursor.execute(f"DELETE FROM pos_cash_rows WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
+        cursor.execute(f"DELETE FROM pos_cancelled_receipts WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
+        cursor.execute(f"DELETE FROM pos_items WHERE pos_record_id IN ({placeholders})", tuple(pos_record_ids))
+        cursor.execute(f"DELETE FROM pos_records WHERE id IN ({placeholders})", tuple(pos_record_ids))
     
-    # ============================================================
-    # 4. DELETE BOOKLETS AND THEIR TRACKING RECORDS (your existing logic)
-    # ============================================================
+    # 4. DELETE BOOKLETS AND THEIR TRACKING RECORDS
     cursor.execute("SELECT id FROM receipt_booklets WHERE user_id = ?", (user_id,))
     booklet_ids = [row['id'] for row in cursor.fetchall()]
     
@@ -6622,24 +6598,22 @@ def delete_user(user_id):
     
     cursor.execute("DELETE FROM receipt_booklets WHERE user_id = ?", (user_id,))
     
-    # ============================================================
     # 5. DELETE OTHER USER-RELATED RECORDS
-    # ============================================================
     cursor.execute("DELETE FROM skipped_submissions WHERE username = ?", (username,))
     cursor.execute("DELETE FROM vice_secretary_notifications WHERE username = ?", (username,))
     cursor.execute("DELETE FROM login_otp_sessions WHERE username = ?", (username,))
-    cursor.execute("DELETE FROM otp_verifications WHERE identifier = ?", (username,))
+    cursor.execute("DELETE FROM password_reset_tokens WHERE username = ?", (username,))
+    # otp_verifications uses email/phone_number columns, not identifier
+    user_email = user.get('secretary_email') or user.get('vice_secretary_email')
+    if user_email:
+        cursor.execute("DELETE FROM otp_verifications WHERE email = ?", (user_email,))
     
-    # ============================================================
     # 6. DELETE THE USER
-    # ============================================================
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     
-    # ============================================================
-    # 7. DELETE FILES FROM DISK (after DB commit succeeds)
-    # ============================================================
+    # 7. DELETE FILES FROM DISK
     deleted_files = 0
     failed_files = []
     for file_path in files_to_delete:
@@ -6655,9 +6629,7 @@ def delete_user(user_id):
         for path, err in failed_files:
             print(f"  - {path}: {err}")
     
-    # ============================================================
-    # 8. AUDIT LOG (your existing call)
-    # ============================================================
+    # 8. AUDIT LOG
     log_data_change(
         "DELETE_USER", 
         "users", 
