@@ -10,6 +10,10 @@ __pycache__/
 
 *.db-journal
 
+
+database.db
+backups/*.db
+
 uploads/
 Kganya_Uploads/
 Kganya_Digital_POS/
