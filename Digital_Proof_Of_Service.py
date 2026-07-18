@@ -4035,6 +4035,76 @@ def delete_product(product_id):
     flash(f"Product '{name}' deleted successfully.", "success")
     return redirect("/admin")
 
+@app.route("/delete-empty-products", methods=["POST"])
+@admin_required
+def delete_empty_products():
+
+    # Optional: allow only superadmin
+    if session.get("role") != "superadmin":
+        flash("Only Superadmin can perform this action.", "error")
+        return redirect("/admin")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Find products with blank names
+    cursor.execute("""
+        SELECT * FROM products
+        WHERE name IS NULL
+        OR TRIM(name) = ''
+    """)
+
+    products = cursor.fetchall()
+
+    if not products:
+        conn.close()
+        flash("No empty products found.", "info")
+        return redirect("/admin")
+
+    deleted_count = 0
+
+    for product in products:
+        product_id = product["id"]
+
+        # Audit log
+        old_product = dict(product)
+
+        # Delete from products table
+        cursor.execute(
+            "DELETE FROM products WHERE id = ?",
+            (product_id,)
+        )
+
+        deleted_count += 1
+
+        # Audit
+        log_data_change(
+            "DELETE_EMPTY_PRODUCT",
+            "products",
+            product_id,
+            "Deleted unnamed product",
+            old_values=old_product
+        )
+
+    # Deactivate in products_master if empty names exist there
+    cursor.execute("""
+        UPDATE products_master
+        SET is_active = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE name IS NULL
+        OR TRIM(name) = ''
+    """)
+
+    conn.commit()
+    conn.close()
+
+    flash(
+        f"{deleted_count} unnamed products deleted successfully.",
+        "success"
+    )
+
+    return redirect("/admin")
+
 
 @app.route("/add-product", methods=["POST"])
 @admin_required

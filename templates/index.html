@@ -680,7 +680,10 @@
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-        <button type="submit">Submit POS</button>
+        <button type="submit"
+                onclick="return confirm('You are about to submit this Proof of Service (POS).\n\nPlease confirm that all information has been checked and is correct.\n\nClick OK to submit or Cancel to continue reviewing.')">
+            Submit POS
+        </button>
     </div>
 
     </form>

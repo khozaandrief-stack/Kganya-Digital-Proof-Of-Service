@@ -85,6 +85,33 @@
                     <td>Manage product prices and types</td>
                     <td><a href="/admin/products"><button>Open</button></a></td>
                 </tr>
+                <tr style="background: rgba(255, 193, 7, 0.10);">
+                    <td>🧹 Empty Products</td>
+                    <td style="color:#b45309; font-weight:bold;">
+                        Delete products that were accidentally created without a name.
+                    </td>
+                    <td>
+                        {% if session.get('role') == 'superadmin' %}
+                        <form action="/delete-empty-products"
+                              method="POST"
+                              style="display:inline;"
+                              onsubmit="return confirm('Delete all products without names? This action cannot be undone.');">
+
+                            <button type="submit"
+                                    style="background:#dc3545;
+                                           color:white;
+                                           border:none;
+                                           padding:8px 14px;
+                                           border-radius:6px;
+                                           cursor:pointer;
+                                           font-weight:bold;">
+                                🗑 Delete Empty Products
+                            </button>
+
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
                 <tr>
                     <td>🗑️ Deleted Booklets</td>
                     <td>View audit trail of all deleted booklets</td>
